@@ -2,7 +2,7 @@
   "name": "kuery",
   "displayName": "Kuery",
   "version": "0.0.1",
-  "description": "A basic Plasmo extension.",
+  "description": "A Chrome extension for automatically tracking and managing your Azure Data Explorer (Kusto) queries, with AI-powered summaries.",
   "author": "Tim Rogers <me@timrogers.co.uk>",
   "scripts": {
     "dev": "plasmo dev",
@@ -38,7 +38,8 @@
     ],
     "host_permissions": [
       "https://dataexplorer.azure.com/*",
-      "https://*.kusto.windows.net/*"
+      "https://*.kusto.windows.net/*",
+      "https://models.github.ai/*"
     ],
     "web_accessible_resources": [
       {

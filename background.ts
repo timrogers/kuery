@@ -52,7 +52,7 @@ async function generateQueryDescription(query: string): Promise<string | null> {
 // Function to test GitHub token validity
 async function testGitHubToken(token: string): Promise<{ success: boolean; error?: string }> {
   try {
-    const response = await fetch('https://api.github.com/models', {
+    const response = await fetch('https://models.github.ai/catalog/models', {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,

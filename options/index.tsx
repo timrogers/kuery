@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from "react";
-import kueryLogo from "../assets/kuery_logo.svg";
+import kueryLogo from "../assets/icon.png";
 
 interface Backup {
   key: string;
@@ -16,12 +16,16 @@ const Options = () => {
   const [isImporting, setIsImporting] = useState(false);
   const [tokenTestStatus, setTokenTestStatus] = useState<string>("");
   const [isTestingToken, setIsTestingToken] = useState(false);
+  const [isTokenValid, setIsTokenValid] = useState(false);
+  const [originalToken, setOriginalToken] = useState<string>("");
 
   useEffect(() => {
     // Load the token from storage when the component mounts
     chrome.storage.sync.get("githubToken", (data) => {
       if (data.githubToken) {
         setGithubToken(data.githubToken);
+        setOriginalToken(data.githubToken);
+        setIsTokenValid(true); // Assume stored token is valid
       }
     });
 
@@ -32,6 +36,8 @@ const Options = () => {
   const handleSave = () => {
     // Save the token to storage
     chrome.storage.sync.set({ githubToken }, () => {
+      setOriginalToken(githubToken);
+      setIsTokenValid(true); // Reset validation state after save
       alert("Settings saved!");
     });
   };
@@ -54,16 +60,43 @@ const Options = () => {
       
       if (response.success) {
         setTokenTestStatus("✅ Token is valid! GitHub Models API accessible.");
+        setIsTokenValid(true);
       } else {
         setTokenTestStatus(`❌ Token test failed: ${response.error}`);
+        setIsTokenValid(false);
       }
     } catch (error) {
       console.error('Token test error:', error);
       setTokenTestStatus("❌ Token test failed: Unable to communicate with background script");
+      setIsTokenValid(false);
     } finally {
       setIsTestingToken(false);
       setTimeout(() => setTokenTestStatus(""), 5000);
     }
+  };
+
+  const handleTokenChange = (value: string) => {
+    setGithubToken(value);
+    // Invalidate token validation if it has changed from the original
+    if (value !== originalToken) {
+      setIsTokenValid(false);
+    } else {
+      setIsTokenValid(true); // Token is back to original, so it's valid
+    }
+  };
+
+  // Determine if the save button should be enabled
+  const canSave = () => {
+    // If token is empty, allow save (user is deleting the token)
+    if (!githubToken.trim()) {
+      return true;
+    }
+    // If token is the same as original, allow save
+    if (githubToken === originalToken) {
+      return true;
+    }
+    // Otherwise, only allow save if token has been tested and is valid
+    return isTokenValid;
   };
 
   const loadAvailableBackups = async () => {
@@ -233,7 +266,7 @@ const Options = () => {
           />
           <h1 style={{ 
             margin: 0, 
-            color: '#2563eb', 
+            color: 'rgb(25,112,196)', 
             fontSize: '28px',
             fontWeight: '600'
           }}>
@@ -321,7 +354,7 @@ const Options = () => {
               type="text"
               id="githubToken"
               value={githubToken}
-              onChange={(e) => setGithubToken(e.target.value)}
+              onChange={(e) => handleTokenChange(e.target.value)}
               style={{ 
                 width: '100%',
                 maxWidth: '400px',
@@ -346,46 +379,68 @@ const Options = () => {
           
           <div style={{ display: 'flex', gap: '12px', alignItems: 'center' }}>
             <button 
-              onClick={handleSave} 
+              onClick={handleTestToken}
+              disabled={isTestingToken || !githubToken.trim()}
               style={{ 
                 padding: '8px 16px', 
-                backgroundColor: '#2563eb', 
+                backgroundColor: (isTestingToken || !githubToken.trim()) ? '#9ca3af' : '#10b981', 
                 color: 'white', 
                 border: 'none', 
                 borderRadius: 4,
-                cursor: 'pointer',
+                cursor: (isTestingToken || !githubToken.trim()) ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                fontWeight: '500'
+                fontWeight: '500',
+                flex: 1
               }}
-              onMouseEnter={(e) => e.target.style.backgroundColor = '#1d4ed8'}
-              onMouseLeave={(e) => e.target.style.backgroundColor = '#2563eb'}
+              onMouseEnter={(e) => {
+                if (!isTestingToken && githubToken.trim()) e.target.style.backgroundColor = '#059669';
+              }}
+              onMouseLeave={(e) => {
+                if (!isTestingToken && githubToken.trim()) e.target.style.backgroundColor = '#10b981';
+              }}
             >
-              Save Token
+              {isTestingToken ? 'Testing...' : 'Test Token'}
             </button>
             
             <button 
-              onClick={handleTestToken}
-              disabled={isTestingToken}
+              onClick={handleSave}
+              disabled={!canSave()}
               style={{ 
                 padding: '8px 16px', 
-                backgroundColor: isTestingToken ? '#9ca3af' : '#10b981', 
+                backgroundColor: !canSave() ? '#9ca3af' : '#2563eb', 
                 color: 'white', 
                 border: 'none', 
                 borderRadius: 4,
-                cursor: isTestingToken ? 'not-allowed' : 'pointer',
+                cursor: !canSave() ? 'not-allowed' : 'pointer',
                 fontSize: '14px',
-                fontWeight: '500'
+                fontWeight: '500',
+                flex: 1
               }}
               onMouseEnter={(e) => {
-                if (!isTestingToken) e.target.style.backgroundColor = '#059669';
+                if (canSave()) e.target.style.backgroundColor = '#1d4ed8';
               }}
               onMouseLeave={(e) => {
-                if (!isTestingToken) e.target.style.backgroundColor = '#10b981';
+                if (canSave()) e.target.style.backgroundColor = '#2563eb';
               }}
             >
-              {isTestingToken ? '🔄 Testing...' : '🧪 Test Token'}
+              Save Token
             </button>
           </div>
+          
+          {/* Save validation message */}
+          {!canSave() && githubToken.trim() && (
+            <div style={{ 
+              marginTop: 8,
+              padding: '6px 8px', 
+              backgroundColor: '#fef3cd',
+              color: '#92400e',
+              borderRadius: 4,
+              fontSize: '12px',
+              border: '1px solid #fde68a'
+            }}>
+              Please test your token before saving
+            </div>
+          )}
           
           {/* Token Test Status */}
           {tokenTestStatus && (
@@ -486,7 +541,7 @@ const Options = () => {
                   if (!isImporting) e.target.style.backgroundColor = '#f59e0b';
                 }}
               >
-                {isImporting ? '🔄 Importing...' : '📤 Choose Database File'}
+                {isImporting ? 'Importing...' : 'Choose Database File'}
               </label>
               <input
                 id="databaseImport"
@@ -539,7 +594,7 @@ const Options = () => {
                 onMouseEnter={(e) => e.target.style.backgroundColor = '#059669'}
                 onMouseLeave={(e) => e.target.style.backgroundColor = '#10b981'}
               >
-                📥 Export Current Database
+                Export Current Database
               </button>
             </div>
             <div style={{ fontSize: '12px', color: '#6b7280' }}>
@@ -578,7 +633,7 @@ const Options = () => {
                   if (!isLoadingBackups) e.target.style.backgroundColor = '#6b7280';
                 }}
               >
-                {isLoadingBackups ? 'Loading...' : '🔄 Refresh'}
+                {isLoadingBackups ? 'Loading...' : 'Refresh'}
               </button>
             </div>
 
@@ -623,7 +678,7 @@ const Options = () => {
                       onMouseEnter={(e) => e.target.style.backgroundColor = '#2563eb'}
                       onMouseLeave={(e) => e.target.style.backgroundColor = '#3b82f6'}
                     >
-                      📥 Export
+                      Export
                     </button>
                   </div>
                 ))}
