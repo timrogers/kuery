@@ -28,11 +28,13 @@ cd kuery
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Build the extension:
+
 ```bash
 npm run build
 ```
@@ -42,7 +44,7 @@ npm run build
    - Enable "Developer mode" (toggle in top right)
    - Click "Load unpacked" and select the `build/chrome-mv3-prod` folder
 
-### Usage 
+### Usage
 
 1. Open the extension's popup, click Settings, then follow the instructions to create, test and save your GitHub Models token. The extension will use this to create AI-generated query descriptions, completely free of charge ✨
 1. Run a query in Azure Data Explorer

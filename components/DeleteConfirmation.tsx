@@ -5,7 +5,10 @@ interface DeleteConfirmationProps {
   onCancel: () => void;
 }
 
-const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({ onConfirm, onCancel }) => {
+const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({
+  onConfirm,
+  onCancel,
+}) => {
   return (
     <div style={{ display: 'flex', gap: '8px' }}>
       <button
@@ -19,7 +22,7 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({ onConfirm, onCa
           cursor: 'pointer',
           fontSize: '14px',
           fontWeight: '500',
-          flex: 1
+          flex: 1,
         }}
       >
         Yes, Delete
@@ -35,7 +38,7 @@ const DeleteConfirmation: React.FC<DeleteConfirmationProps> = ({ onConfirm, onCa
           cursor: 'pointer',
           fontSize: '14px',
           fontWeight: '500',
-          flex: 1
+          flex: 1,
         }}
       >
         Cancel

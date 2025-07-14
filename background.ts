@@ -1,16 +1,16 @@
 // Background service worker for Kuery extension
-import initSqlJs from "sql.js";
 import OpenAI from 'openai';
+import initSqlJs from 'sql.js';
 
 // Function to generate query description using GitHub Models
 async function generateQueryDescription(query: string): Promise<string | null> {
   try {
-    const { githubToken } = await chrome.storage.sync.get("githubToken");
+    const { githubToken } = await chrome.storage.sync.get('githubToken');
     if (!githubToken) {
       console.log('Kuery: No GitHub token configured for OpenAI');
       return null; // No token configured
     }
-    
+
     console.log('Kuery: GitHub token found, attempting OpenAI request');
 
     const client = new OpenAI({
@@ -30,12 +30,13 @@ async function generateQueryDescription(query: string): Promise<string | null> {
       messages: [
         {
           role: 'system',
-          content: 'You are an expert at analyzing Kusto queries. Generate a concise summary of what the query does in 10 words or less. Focus on the main action and data being queried. Be specific and technical.'
+          content:
+            'You are an expert at analyzing Kusto queries. Generate a concise summary of what the query does in 10 words or less. Focus on the main action and data being queried. Be specific and technical.',
         },
         {
           role: 'user',
-          content: `Summarize this Kusto query in 10 words or less:\n\n${cleanQuery}`
-        }
+          content: `Summarize this Kusto query in 10 words or less:\n\n${cleanQuery}`,
+        },
       ],
       max_tokens: 50,
       temperature: 0.1,
@@ -50,15 +51,17 @@ async function generateQueryDescription(query: string): Promise<string | null> {
 }
 
 // Function to test GitHub token validity
-async function testGitHubToken(token: string): Promise<{ success: boolean; error?: string }> {
+async function testGitHubToken(
+  token: string
+): Promise<{ success: boolean; error?: string }> {
   try {
     const response = await fetch('https://models.github.ai/catalog/models', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${token}`,
-        'Accept': 'application/vnd.github+json',
-        'X-GitHub-Api-Version': '2022-11-28'
-      }
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+      },
     });
 
     if (response.status === 200) {
@@ -66,17 +69,21 @@ async function testGitHubToken(token: string): Promise<{ success: boolean; error
       return { success: true };
     } else {
       const errorText = await response.text();
-      console.error('Kuery: GitHub token test failed:', response.status, errorText);
-      return { 
-        success: false, 
-        error: `HTTP ${response.status}: ${response.statusText}` 
+      console.error(
+        'Kuery: GitHub token test failed:',
+        response.status,
+        errorText
+      );
+      return {
+        success: false,
+        error: `HTTP ${response.status}: ${response.statusText}`,
       };
     }
   } catch (error) {
     console.error('Kuery: GitHub token test error:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Network error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Network error',
     };
   }
 }
@@ -98,7 +105,7 @@ let SQL: any = null;
 let db: any = null;
 let sqliteAvailable = false;
 let initializationError: string | null = null;
-let migrationStatus: {
+const migrationStatus: {
   hasUnappliedMigrations: boolean;
   failedMigration?: { version: number; error: string };
   lastBackupDate?: string;
@@ -109,15 +116,15 @@ async function initDatabase() {
   try {
     // Load WASM using a different approach for Chrome extensions
     const wasmUrl = chrome.runtime.getURL('assets/sql-wasm.wasm');
-    
+
     // Create SQL.js instance with pre-loaded WASM
     SQL = await initSqlJs({
-      locateFile: () => wasmUrl
+      locateFile: () => wasmUrl,
     });
-    
+
     // Try to load existing database from storage
     const result = await chrome.storage.local.get(['kuery_database']);
-    
+
     if (result.kuery_database) {
       // Load existing database
       const uint8Array = new Uint8Array(result.kuery_database);
@@ -128,10 +135,10 @@ async function initDatabase() {
       db = new SQL.Database();
       console.log('Kuery: Created new SQLite database');
     }
-    
+
     // Create tables if they don't exist
     createTables();
-    
+
     sqliteAvailable = true;
     initializationError = null;
     console.log('Kuery: SQLite database initialized successfully');
@@ -139,18 +146,19 @@ async function initDatabase() {
   } catch (error) {
     console.error('Kuery: Failed to initialize SQLite database:', error);
     sqliteAvailable = false;
-    initializationError = error instanceof Error ? error.message : 'Unknown error';
-    
+    initializationError =
+      error instanceof Error ? error.message : 'Unknown error';
+
     // Notify all Azure Data Explorer tabs about the error
     notifyTabsAboutSQLiteError();
-    
+
     return false;
   }
 }
 
 function createTables() {
   if (!db) return;
-  
+
   try {
     // Create base queries table (without optional columns that will be added by migrations)
     db.exec(`
@@ -167,19 +175,18 @@ function createTables() {
         UNIQUE(query_text, database_name, cluster_name)
       )
     `);
-    
+
     // Run migrations to add any additional columns or tables
     runMigrations();
-    
+
     console.log('Kuery: SQLite tables created/verified');
 
     // Log table schema
-    const tableInfo = db.exec("PRAGMA table_info(queries)");
+    const tableInfo = db.exec('PRAGMA table_info(queries)');
     if (tableInfo && tableInfo.length > 0) {
       const columns = tableInfo[0].values.map(row => row[1]);
       console.log('Kuery: Queries table columns:', columns);
     }
-
   } catch (error) {
     console.error('Kuery: Error creating SQLite tables:', error);
   }
@@ -199,16 +206,17 @@ const migrations: Migration[] = [
     description: 'Add runs_count, last_used_at, and description columns',
     up: (db: any) => {
       // Check if columns exist before adding them
-      const tableInfo = db.exec("PRAGMA table_info(queries)");
-      const columns = tableInfo && tableInfo.length > 0 
-        ? tableInfo[0].values.map(row => row[1]) 
-        : [];
-      
+      const tableInfo = db.exec('PRAGMA table_info(queries)');
+      const columns =
+        tableInfo && tableInfo.length > 0
+          ? tableInfo[0].values.map(row => row[1])
+          : [];
+
       if (!columns.includes('runs_count')) {
         db.exec('ALTER TABLE queries ADD COLUMN runs_count INTEGER DEFAULT 1');
         db.exec('UPDATE queries SET runs_count = 1 WHERE runs_count IS NULL');
       }
-      
+
       if (!columns.includes('last_used_at')) {
         db.exec('ALTER TABLE queries ADD COLUMN last_used_at DATETIME');
         db.exec(`
@@ -217,17 +225,23 @@ const migrations: Migration[] = [
           WHERE last_used_at IS NULL
         `);
       }
-      
+
       if (!columns.includes('description')) {
-        db.exec('ALTER TABLE queries ADD COLUMN description TEXT DEFAULT "Untitled"');
-        db.exec('UPDATE queries SET description = "Untitled" WHERE description IS NULL');
+        db.exec(
+          'ALTER TABLE queries ADD COLUMN description TEXT DEFAULT "Untitled"'
+        );
+        db.exec(
+          'UPDATE queries SET description = "Untitled" WHERE description IS NULL'
+        );
       }
     },
-    down: (db: any) => {
+    down: (_db: any) => {
       // SQLite doesn't support DROP COLUMN, so this would require recreating the table
-      console.warn('Kuery: Downgrade from migration 1 not supported (SQLite limitation)');
-    }
-  }
+      console.warn(
+        'Kuery: Downgrade from migration 1 not supported (SQLite limitation)'
+      );
+    },
+  },
   // Future migrations can be added here
   // {
   //   version: 2,
@@ -243,7 +257,7 @@ const migrations: Migration[] = [
 
 function createSchemaVersionTable() {
   if (!db) return;
-  
+
   try {
     db.exec(`
       CREATE TABLE IF NOT EXISTS schema_version (
@@ -259,15 +273,22 @@ function createSchemaVersionTable() {
 
 function getCurrentSchemaVersion(): number {
   if (!db) return 0;
-  
+
   try {
-    const result = db.exec('SELECT MAX(version) as version FROM schema_version');
-    if (result && result.length > 0 && result[0].values && result[0].values.length > 0) {
+    const result = db.exec(
+      'SELECT MAX(version) as version FROM schema_version'
+    );
+    if (
+      result &&
+      result.length > 0 &&
+      result[0].values &&
+      result[0].values.length > 0
+    ) {
       const version = result[0].values[0][0];
       return version || 0;
     }
     return 0;
-  } catch (error) {
+  } catch {
     // Table might not exist yet
     return 0;
   }
@@ -275,9 +296,11 @@ function getCurrentSchemaVersion(): number {
 
 function setSchemaVersion(version: number, description: string) {
   if (!db) return;
-  
+
   try {
-    const stmt = db.prepare('INSERT INTO schema_version (version, description) VALUES (?, ?)');
+    const stmt = db.prepare(
+      'INSERT INTO schema_version (version, description) VALUES (?, ?)'
+    );
     stmt.run([version, description]);
     stmt.free();
   } catch (error) {
@@ -287,25 +310,25 @@ function setSchemaVersion(version: number, description: string) {
 
 async function createDatabaseBackup(): Promise<boolean> {
   if (!db) return false;
-  
+
   try {
     const data = db.export();
     const backupKey = `kuery_database_backup_${new Date().toISOString()}`;
     await chrome.storage.local.set({ [backupKey]: Array.from(data) });
-    
+
     // Keep only the 3 most recent backups to avoid storage bloat
     const allKeys = await chrome.storage.local.get();
     const backupKeys = Object.keys(allKeys)
       .filter(key => key.startsWith('kuery_database_backup_'))
       .sort()
       .reverse();
-    
+
     if (backupKeys.length > 3) {
       const keysToRemove = backupKeys.slice(3);
       await chrome.storage.local.remove(keysToRemove);
       console.log(`Kuery: Removed ${keysToRemove.length} old backup(s)`);
     }
-    
+
     migrationStatus.lastBackupDate = new Date().toISOString();
     console.log(`Kuery: Database backup created: ${backupKey}`);
     return true;
@@ -317,60 +340,76 @@ async function createDatabaseBackup(): Promise<boolean> {
 
 function runMigrations() {
   if (!db) return;
-  
+
   try {
     createSchemaVersionTable();
     const currentVersion = getCurrentSchemaVersion();
-    
+
     console.log(`Kuery: Current schema version: ${currentVersion}`);
-    
+
     // Find pending migrations
-    const pendingMigrations = migrations.filter(m => m.version > currentVersion);
-    
+    const pendingMigrations = migrations.filter(
+      m => m.version > currentVersion
+    );
+
     if (pendingMigrations.length === 0) {
       console.log('Kuery: No pending migrations');
       migrationStatus.hasUnappliedMigrations = false;
       migrationStatus.failedMigration = undefined;
       return;
     }
-    
-    console.log(`Kuery: Running ${pendingMigrations.length} pending migration(s)`);
-    
+
+    console.log(
+      `Kuery: Running ${pendingMigrations.length} pending migration(s)`
+    );
+
     // Create backup before applying migrations
     createDatabaseBackup().then(backupSuccess => {
       if (!backupSuccess) {
-        console.warn('Kuery: Failed to create backup, but proceeding with migrations');
+        console.warn(
+          'Kuery: Failed to create backup, but proceeding with migrations'
+        );
       }
     });
-    
+
     // Sort migrations by version to ensure correct order
     pendingMigrations.sort((a, b) => a.version - b.version);
-    
+
     for (const migration of pendingMigrations) {
-      console.log(`Kuery: Applying migration ${migration.version}: ${migration.description}`);
-      
+      console.log(
+        `Kuery: Applying migration ${migration.version}: ${migration.description}`
+      );
+
       try {
         // Run the migration
         migration.up(db);
-        
+
         // Record the migration as applied
         setSchemaVersion(migration.version, migration.description);
-        
-        console.log(`Kuery: Migration ${migration.version} completed successfully`);
+
+        console.log(
+          `Kuery: Migration ${migration.version} completed successfully`
+        );
       } catch (migrationError) {
-        console.error(`Kuery: Migration ${migration.version} failed:`, migrationError);
-        
+        console.error(
+          `Kuery: Migration ${migration.version} failed:`,
+          migrationError
+        );
+
         // Track the failed migration
         migrationStatus.hasUnappliedMigrations = true;
         migrationStatus.failedMigration = {
           version: migration.version,
-          error: migrationError instanceof Error ? migrationError.message : String(migrationError)
+          error:
+            migrationError instanceof Error
+              ? migrationError.message
+              : String(migrationError),
         };
-        
+
         throw migrationError; // Stop migration process on error
       }
     }
-    
+
     // All migrations completed successfully
     migrationStatus.hasUnappliedMigrations = false;
     migrationStatus.failedMigration = undefined;
@@ -385,7 +424,9 @@ function runMigrations() {
 async function saveQuery(queryData: KustoQueryData) {
   // Check if SQLite is available
   if (!sqliteAvailable || !db || !SQL) {
-    console.error('Kuery: Cannot save query - SQLite database is not available');
+    console.error(
+      'Kuery: Cannot save query - SQLite database is not available'
+    );
     console.error('Kuery: Initialization error:', initializationError);
     return false;
   }
@@ -398,7 +439,9 @@ async function saveQuery(queryData: KustoQueryData) {
 
     // Only store queries that have successful results
     if (!queryData.responsePreview?.hasResults) {
-      console.log('Kuery: Query not stored because it did not have successful results');
+      console.log(
+        'Kuery: Query not stored because it did not have successful results'
+      );
       return false;
     }
 
@@ -407,7 +450,7 @@ async function saveQuery(queryData: KustoQueryData) {
       SELECT id, runs_count FROM queries 
       WHERE query_text = ? AND database_name = ? AND cluster_name = ?
     `);
-    
+
     checkStmt.bind([queryData.query, queryData.database, queryData.cluster]);
     let existingQuery = null;
     if (checkStmt.step()) {
@@ -426,16 +469,16 @@ async function saveQuery(queryData: KustoQueryData) {
             response_preview = ?
         WHERE id = ?
       `);
-      
+
       updateStmt.run([
         queryData.timestamp,
         queryData.url,
         JSON.stringify(queryData.requestBody),
         JSON.stringify(queryData.responsePreview),
-        existingQuery.id
+        existingQuery.id,
       ]);
       updateStmt.free();
-      
+
       console.log('Kuery: Query updated - runs_count incremented');
     } else {
       // Insert new query
@@ -447,7 +490,7 @@ async function saveQuery(queryData: KustoQueryData) {
           last_used_at, request_body, response_preview, description
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
       `);
-      
+
       insertStmt.run([
         queryData.query,
         queryData.database,
@@ -457,16 +500,16 @@ async function saveQuery(queryData: KustoQueryData) {
         queryData.timestamp,
         JSON.stringify(queryData.requestBody),
         JSON.stringify(queryData.responsePreview),
-        description || 'Untitled'
+        description || 'Untitled',
       ]);
       insertStmt.free();
-      
+
       console.log('Kuery: New query saved to SQLite database');
     }
-    
+
     // Save database to storage
     await saveDatabaseToStorage();
-    
+
     return true;
   } catch (error) {
     console.error('Kuery: Error saving query to SQLite database:', error);
@@ -476,7 +519,7 @@ async function saveQuery(queryData: KustoQueryData) {
 
 async function saveDatabaseToStorage() {
   if (!db) return;
-  
+
   try {
     const data = db.export();
     await chrome.storage.local.set({ kuery_database: Array.from(data) });
@@ -491,12 +534,17 @@ async function getQueriesCount() {
   }
 
   try {
-    const result = db.exec("SELECT COUNT(*) as count FROM queries");
-    
-    if (result && result.length > 0 && result[0].values && result[0].values.length > 0) {
+    const result = db.exec('SELECT COUNT(*) as count FROM queries');
+
+    if (
+      result &&
+      result.length > 0 &&
+      result[0].values &&
+      result[0].values.length > 0
+    ) {
       return result[0].values[0][0];
     }
-    
+
     return 0;
   } catch (error) {
     console.error('Kuery: Error getting queries count:', error);
@@ -510,21 +558,23 @@ async function getRecentQueries(limit: number = 10, offset: number = 0) {
   }
 
   try {
-    const result = db.exec(`SELECT * FROM queries ORDER BY last_used_at DESC LIMIT ${limit} OFFSET ${offset}`);
-    
+    const result = db.exec(
+      `SELECT * FROM queries ORDER BY last_used_at DESC LIMIT ${limit} OFFSET ${offset}`
+    );
+
     if (!result || result.length === 0 || !result[0].values) {
       return [];
     }
-    
+
     const columns = result[0].columns;
     const rows = result[0].values;
-    
+
     const queries = rows.map(row => {
-      const query = {};
+      const query: Record<string, any> = {};
       columns.forEach((col, index) => {
         query[col] = row[index];
       });
-      
+
       // Transform to match expected format
       return {
         id: query.id,
@@ -536,11 +586,15 @@ async function getRecentQueries(limit: number = 10, offset: number = 0) {
         last_used_at: query.last_used_at,
         created_at: query.created_at,
         description: query.description || 'Untitled',
-        request_body: query.request_body ? JSON.parse(query.request_body) : null,
-        response_preview: query.response_preview ? JSON.parse(query.response_preview) : null
+        request_body: query.request_body
+          ? JSON.parse(query.request_body)
+          : null,
+        response_preview: query.response_preview
+          ? JSON.parse(query.response_preview)
+          : null,
       };
     });
-    
+
     return queries;
   } catch (error) {
     console.error('Kuery: Error getting recent queries:', error);
@@ -568,11 +622,17 @@ async function searchQueries(searchTerm: string, limit: number = 50) {
       ORDER BY created_at DESC 
       LIMIT ?
     `);
-    
+
     const searchPattern = `%${searchTerm}%`;
     const results = [];
-    stmt.bind([searchPattern, searchPattern, searchPattern, searchPattern, limit]);
-    
+    stmt.bind([
+      searchPattern,
+      searchPattern,
+      searchPattern,
+      searchPattern,
+      limit,
+    ]);
+
     while (stmt.step()) {
       const row = stmt.getAsObject();
       results.push({
@@ -582,10 +642,12 @@ async function searchQueries(searchTerm: string, limit: number = 50) {
         cluster: row.cluster_name,
         description: row.description || 'Untitled',
         request_body: row.request_body ? JSON.parse(row.request_body) : null,
-        response_preview: row.response_preview ? JSON.parse(row.response_preview) : null
+        response_preview: row.response_preview
+          ? JSON.parse(row.response_preview)
+          : null,
       });
     }
-    
+
     stmt.free();
     return results;
   } catch (error) {
@@ -596,13 +658,15 @@ async function searchQueries(searchTerm: string, limit: number = 50) {
 
 async function deleteQuery(queryId: number) {
   if (!sqliteAvailable || !db || !SQL) {
-    console.error('Kuery: Cannot delete query - SQLite database is not available');
+    console.error(
+      'Kuery: Cannot delete query - SQLite database is not available'
+    );
     return false;
   }
 
   try {
     console.log('Kuery: Attempting to delete query with ID:', queryId);
-    
+
     // Check if query exists first
     const checkStmt = db.prepare('SELECT id FROM queries WHERE id = ?');
     checkStmt.bind([queryId]);
@@ -611,19 +675,21 @@ async function deleteQuery(queryId: number) {
       exists = true;
     }
     checkStmt.free();
-    
+
     if (!exists) {
       console.error('Kuery: Query with ID', queryId, 'does not exist');
       return false;
     }
-    
+
     // Delete the query
     const deleteStmt = db.prepare('DELETE FROM queries WHERE id = ?');
     deleteStmt.run([queryId]);
     deleteStmt.free();
-    
+
     // Verify deletion
-    const verifyStmt = db.prepare('SELECT COUNT(*) as count FROM queries WHERE id = ?');
+    const verifyStmt = db.prepare(
+      'SELECT COUNT(*) as count FROM queries WHERE id = ?'
+    );
     verifyStmt.bind([queryId]);
     let stillExists = false;
     if (verifyStmt.step()) {
@@ -631,15 +697,15 @@ async function deleteQuery(queryId: number) {
       stillExists = (result['COUNT(*)'] || result.count) > 0;
     }
     verifyStmt.free();
-    
+
     if (stillExists) {
       console.error('Kuery: Query deletion failed - query still exists');
       return false;
     }
-    
+
     // Save database to storage
     await saveDatabaseToStorage();
-    
+
     console.log('Kuery: Query deleted successfully');
     return true;
   } catch (error) {
@@ -651,20 +717,29 @@ async function deleteQuery(queryId: number) {
 
 async function updateQueryDescription(queryId: number, description: string) {
   if (!sqliteAvailable || !db || !SQL) {
-    console.error('Kuery: Cannot update description - SQLite database is not available');
+    console.error(
+      'Kuery: Cannot update description - SQLite database is not available'
+    );
     return false;
   }
 
   try {
-    console.log('Kuery: Updating description for query ID:', queryId, 'to:', description);
-    
-    const updateStmt = db.prepare('UPDATE queries SET description = ? WHERE id = ?');
+    console.log(
+      'Kuery: Updating description for query ID:',
+      queryId,
+      'to:',
+      description
+    );
+
+    const updateStmt = db.prepare(
+      'UPDATE queries SET description = ? WHERE id = ?'
+    );
     updateStmt.run([description, queryId]);
     updateStmt.free();
-    
+
     // Save database to storage
     await saveDatabaseToStorage();
-    
+
     console.log('Kuery: Description updated successfully');
     return true;
   } catch (error) {
@@ -673,7 +748,11 @@ async function updateQueryDescription(queryId: number, description: string) {
   }
 }
 
-async function exportDatabase(): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
+async function exportDatabase(): Promise<{
+  success: boolean;
+  data?: Uint8Array;
+  error?: string;
+}> {
   if (!sqliteAvailable || !db || !SQL) {
     return { success: false, error: 'SQLite database is not available' };
   }
@@ -684,14 +763,18 @@ async function exportDatabase(): Promise<{ success: boolean; data?: Uint8Array; 
     return { success: true, data };
   } catch (error) {
     console.error('Kuery: Error exporting database:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }
 
-async function getAvailableBackups(): Promise<{ success: boolean; backups?: Array<{key: string; date: string}>; error?: string }> {
+async function getAvailableBackups(): Promise<{
+  success: boolean;
+  backups?: Array<{ key: string; date: string }>;
+  error?: string;
+}> {
   try {
     const allKeys = await chrome.storage.local.get();
     const backupKeys = Object.keys(allKeys)
@@ -700,7 +783,7 @@ async function getAvailableBackups(): Promise<{ success: boolean; backups?: Arra
         const dateMatch = key.match(/kuery_database_backup_(.+)/);
         return {
           key,
-          date: dateMatch ? dateMatch[1] : 'Unknown'
+          date: dateMatch ? dateMatch[1] : 'Unknown',
         };
       })
       .sort((a, b) => b.date.localeCompare(a.date)); // Most recent first
@@ -709,17 +792,19 @@ async function getAvailableBackups(): Promise<{ success: boolean; backups?: Arra
     return { success: true, backups: backupKeys };
   } catch (error) {
     console.error('Kuery: Error getting available backups:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }
 
-async function exportBackup(backupKey: string): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
+async function exportBackup(
+  backupKey: string
+): Promise<{ success: boolean; data?: Uint8Array; error?: string }> {
   try {
     const result = await chrome.storage.local.get([backupKey]);
-    
+
     if (!result[backupKey]) {
       return { success: false, error: 'Backup not found' };
     }
@@ -729,105 +814,133 @@ async function exportBackup(backupKey: string): Promise<{ success: boolean; data
     return { success: true, data };
   } catch (error) {
     console.error('Kuery: Error exporting backup:', error);
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error' 
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Unknown error',
     };
   }
 }
 
-async function validateSQLiteDatabase(data: Uint8Array): Promise<{ valid: boolean; error?: string }> {
+async function validateSQLiteDatabase(
+  data: Uint8Array
+): Promise<{ valid: boolean; error?: string }> {
   try {
     // Check if the file starts with SQLite magic bytes
-    const magicBytes = new Uint8Array([0x53, 0x51, 0x4C, 0x69, 0x74, 0x65, 0x20, 0x66, 0x6F, 0x72, 0x6D, 0x61, 0x74, 0x20, 0x33, 0x00]);
-    
+    const magicBytes = new Uint8Array([
+      0x53, 0x51, 0x4c, 0x69, 0x74, 0x65, 0x20, 0x66, 0x6f, 0x72, 0x6d, 0x61,
+      0x74, 0x20, 0x33, 0x00,
+    ]);
+
     if (data.length < 16) {
-      return { valid: false, error: 'File too small to be a valid SQLite database' };
+      return {
+        valid: false,
+        error: 'File too small to be a valid SQLite database',
+      };
     }
-    
+
     // Check magic bytes
     for (let i = 0; i < magicBytes.length; i++) {
       if (data[i] !== magicBytes[i]) {
         return { valid: false, error: 'Invalid SQLite file format' };
       }
     }
-    
+
     // Try to create a temporary database to validate structure
     try {
       const tempDb = new SQL.Database(data);
-      
+
       // Check if it has our expected queries table structure
-      const result = tempDb.exec("SELECT name FROM sqlite_master WHERE type='table' AND name='queries'");
+      const result = tempDb.exec(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='queries'"
+      );
       if (!result || result.length === 0) {
         tempDb.close();
-        return { valid: false, error: 'Database does not contain the expected queries table' };
+        return {
+          valid: false,
+          error: 'Database does not contain the expected queries table',
+        };
       }
-      
+
       // Validate basic table structure
-      const tableInfo = tempDb.exec("PRAGMA table_info(queries)");
+      const tableInfo = tempDb.exec('PRAGMA table_info(queries)');
       if (!tableInfo || tableInfo.length === 0) {
         tempDb.close();
         return { valid: false, error: 'Cannot read queries table structure' };
       }
-      
+
       const columns = tableInfo[0].values.map(row => row[1]);
       const requiredColumns = ['id', 'query_text'];
-      const hasRequiredColumns = requiredColumns.every(col => columns.includes(col));
-      
+      const hasRequiredColumns = requiredColumns.every(col =>
+        columns.includes(col)
+      );
+
       if (!hasRequiredColumns) {
         tempDb.close();
-        return { valid: false, error: 'Database missing required columns in queries table' };
+        return {
+          valid: false,
+          error: 'Database missing required columns in queries table',
+        };
       }
-      
+
       tempDb.close();
       return { valid: true };
     } catch (dbError) {
-      return { valid: false, error: `Database validation failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}` };
+      return {
+        valid: false,
+        error: `Database validation failed: ${dbError instanceof Error ? dbError.message : 'Unknown error'}`,
+      };
     }
   } catch (error) {
-    return { valid: false, error: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}` };
+    return {
+      valid: false,
+      error: `Validation error: ${error instanceof Error ? error.message : 'Unknown error'}`,
+    };
   }
 }
 
-async function importDatabase(data: Uint8Array): Promise<{ success: boolean; error?: string }> {
+async function importDatabase(
+  data: Uint8Array
+): Promise<{ success: boolean; error?: string }> {
   if (!SQL) {
     return { success: false, error: 'SQLite not initialized' };
   }
 
   try {
     console.log('Kuery: Starting database import...');
-    
+
     // Validate the incoming database
     const validation = await validateSQLiteDatabase(data);
     if (!validation.valid) {
       return { success: false, error: validation.error };
     }
-    
+
     // Create backup of current database before import
     const backupSuccess = await createDatabaseBackup();
     if (!backupSuccess) {
-      console.warn('Kuery: Failed to create backup before import, but proceeding...');
+      console.warn(
+        'Kuery: Failed to create backup before import, but proceeding...'
+      );
     }
-    
+
     // Replace the current database
     if (db) {
       db.close();
     }
-    
+
     // Create new database from imported data
     db = new SQL.Database(data);
-    
+
     // Run migrations on the imported database to ensure it's up to date
     runMigrations();
-    
+
     // Save the imported database to storage
     await saveDatabaseToStorage();
-    
+
     console.log('Kuery: Database import completed successfully');
     return { success: true };
   } catch (error) {
     console.error('Kuery: Error importing database:', error);
-    
+
     // Try to restore from backup if available
     try {
       console.log('Kuery: Attempting to restore from backup...');
@@ -840,10 +953,11 @@ async function importDatabase(data: Uint8Array): Promise<{ success: boolean; err
     } catch (restoreError) {
       console.error('Kuery: Failed to restore database:', restoreError);
     }
-    
-    return { 
-      success: false, 
-      error: error instanceof Error ? error.message : 'Unknown error during import' 
+
+    return {
+      success: false,
+      error:
+        error instanceof Error ? error.message : 'Unknown error during import',
     };
   }
 }
@@ -852,18 +966,24 @@ async function importDatabase(data: Uint8Array): Promise<{ success: boolean; err
 async function notifyTabsAboutSQLiteError() {
   try {
     const tabs = await chrome.tabs.query({
-      url: ["https://dataexplorer.azure.com/*", "https://*.kusto.windows.net/*"]
+      url: [
+        'https://dataexplorer.azure.com/*',
+        'https://*.kusto.windows.net/*',
+      ],
     });
-    
+
     for (const tab of tabs) {
       if (tab.id) {
-        chrome.tabs.sendMessage(tab.id, {
-          type: 'SQLITE_ERROR',
-          error: initializationError,
-          message: 'Kuery extension cannot save queries - SQLite database failed to initialize'
-        }).catch(() => {
-          // Ignore errors if content script isn't ready
-        });
+        chrome.tabs
+          .sendMessage(tab.id, {
+            type: 'SQLITE_ERROR',
+            error: initializationError,
+            message:
+              'Kuery extension cannot save queries - SQLite database failed to initialize',
+          })
+          .catch(() => {
+            // Ignore errors if content script isn't ready
+          });
       }
     }
   } catch (error) {
@@ -881,41 +1001,56 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const success = await saveQuery(message.data);
           sendResponse({ success });
           break;
-          
+
         case 'GET_QUERIES_COUNT':
           const count = await getQueriesCount();
           sendResponse({ count });
           break;
-          
+
         case 'GET_RECENT_QUERIES':
-          const queries = await getRecentQueries(message.limit || 10, message.offset || 0);
+          const queries = await getRecentQueries(
+            message.limit || 10,
+            message.offset || 0
+          );
           sendResponse({ queries });
           break;
 
         case 'SEARCH_QUERIES':
-          const searchResults = await searchQueries(message.searchTerm, message.limit || 50);
+          const searchResults = await searchQueries(
+            message.searchTerm,
+            message.limit || 50
+          );
           sendResponse({ queries: searchResults });
           break;
 
         case 'DELETE_QUERY':
-          console.log('Kuery Background: Processing DELETE_QUERY for ID:', message.queryId);
+          console.log(
+            'Kuery Background: Processing DELETE_QUERY for ID:',
+            message.queryId
+          );
           const deleteSuccess = await deleteQuery(message.queryId);
           console.log('Kuery Background: Delete result:', deleteSuccess);
           sendResponse({ success: deleteSuccess });
           break;
 
         case 'UPDATE_QUERY_DESCRIPTION':
-          console.log('Kuery Background: Processing UPDATE_QUERY_DESCRIPTION for ID:', message.queryId);
-          const updateSuccess = await updateQueryDescription(message.queryId, message.description);
+          console.log(
+            'Kuery Background: Processing UPDATE_QUERY_DESCRIPTION for ID:',
+            message.queryId
+          );
+          const updateSuccess = await updateQueryDescription(
+            message.queryId,
+            message.description
+          );
           console.log('Kuery Background: Update result:', updateSuccess);
           sendResponse({ success: updateSuccess });
           break;
-          
+
         case 'GET_SQLITE_STATUS':
-          sendResponse({ 
-            available: sqliteAvailable, 
+          sendResponse({
+            available: sqliteAvailable,
             error: initializationError,
-            migrationStatus: migrationStatus
+            migrationStatus: migrationStatus,
           });
           break;
 
@@ -923,14 +1058,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const exportResult = await exportDatabase();
           if (exportResult.success && exportResult.data) {
             // Convert Uint8Array to Array for message passing
-            sendResponse({ 
-              success: true, 
-              data: Array.from(exportResult.data) 
+            sendResponse({
+              success: true,
+              data: Array.from(exportResult.data),
             });
           } else {
-            sendResponse({ 
-              success: false, 
-              error: exportResult.error 
+            sendResponse({
+              success: false,
+              error: exportResult.error,
             });
           }
           break;
@@ -944,14 +1079,14 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           const backupResult = await exportBackup(message.backupKey);
           if (backupResult.success && backupResult.data) {
             // Convert Uint8Array to Array for message passing
-            sendResponse({ 
-              success: true, 
-              data: Array.from(backupResult.data) 
+            sendResponse({
+              success: true,
+              data: Array.from(backupResult.data),
             });
           } else {
-            sendResponse({ 
-              success: false, 
-              error: backupResult.error 
+            sendResponse({
+              success: false,
+              error: backupResult.error,
             });
           }
           break;
@@ -963,9 +1098,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             const importResult = await importDatabase(importData);
             sendResponse(importResult);
           } catch (error) {
-            sendResponse({ 
-              success: false, 
-              error: error instanceof Error ? error.message : 'Invalid data format' 
+            sendResponse({
+              success: false,
+              error:
+                error instanceof Error ? error.message : 'Invalid data format',
             });
           }
           break;
@@ -976,7 +1112,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('Kuery Background: Token test result:', testResult);
           sendResponse(testResult);
           break;
-          
+
         default:
           console.log('Kuery Background: Unknown message type:', message.type);
           sendResponse({ error: 'Unknown message type' });
@@ -986,7 +1122,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ error: error.message });
     }
   })();
-  
+
   console.log('Kuery Background: Message handler completed, returning true');
   return true; // Keep message channel open for async response
 });

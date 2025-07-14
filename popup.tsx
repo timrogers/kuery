@@ -1,8 +1,7 @@
-import { useEffect, useState, useCallback } from "react"
-import LoadingScreen from "./components/LoadingScreen";
-import MainScreen from "./components/MainScreen";
-import QueryDetail from "./components/QueryDetail";
-import styles from "./popup.module.css";
+import { useCallback, useEffect, useState } from 'react';
+import LoadingScreen from './components/LoadingScreen';
+import MainScreen from './components/MainScreen';
+import QueryDetail from './components/QueryDetail';
 
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState<T>(value);
@@ -33,186 +32,198 @@ interface QueryData {
 
 function IndexPopup() {
   console.log('Popup: IndexPopup component rendering');
-  const [queries, setQueries] = useState<QueryData[]>([])
-  const [loading, setLoading] = useState(true)
-  const [searching, setSearching] = useState(false)
-  const [searchTerm, setSearchTerm] = useState('')
+  const [queries, setQueries] = useState<QueryData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [searching, setSearching] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [sqliteStatus, setSqliteStatus] = useState<{
-    available: boolean, 
-    error?: string,
+    available: boolean;
+    error?: string;
     migrationStatus?: {
       hasUnappliedMigrations: boolean;
       failedMigration?: { version: number; error: string };
       lastBackupDate?: string;
-    }
-  } | null>(null)
-  const [selectedQuery, setSelectedQuery] = useState<QueryData | null>(null)
-  const [offset, setOffset] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-  const [loadingMore, setLoadingMore] = useState(false)
-  
-  const debouncedSearchTerm = useDebounce(searchTerm, 300)
+    };
+  } | null>(null);
+  const [selectedQuery, setSelectedQuery] = useState<QueryData | null>(null);
+  const [offset, setOffset] = useState(0);
+  const [hasMore, setHasMore] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+
+  const debouncedSearchTerm = useDebounce(searchTerm, 300);
+
+  const performSearch = useCallback(
+    async (term: string) => {
+      if (loading) return; // Don't search during initial load
+
+      setSearching(true);
+      try {
+        let response;
+        if (term.trim() === '') {
+          // Get recent queries if no search term
+          response = await chrome.runtime.sendMessage({
+            type: 'GET_RECENT_QUERIES',
+            limit: 50,
+            offset: 0,
+          });
+        } else {
+          // Search queries
+          response = await chrome.runtime.sendMessage({
+            type: 'SEARCH_QUERIES',
+            searchTerm: term,
+            limit: 50,
+            offset: 0,
+          });
+        }
+
+        if (response?.queries) {
+          setQueries(response.queries);
+          setOffset(term.trim() === '' ? 50 : 0);
+          setHasMore(response.queries.length === 50);
+        } else {
+          setQueries([]);
+          setOffset(0);
+          setHasMore(false);
+        }
+      } catch (error) {
+        console.error('Error searching queries:', error);
+        setQueries([]);
+        setOffset(0);
+        setHasMore(false);
+      } finally {
+        setSearching(false);
+      }
+    },
+    [loading]
+  );
 
   useEffect(() => {
     console.log('Popup: Component mounted, loading initial data');
-    loadInitialData()
-  }, [])
+    loadInitialData();
+  }, []);
 
   useEffect(() => {
     if (debouncedSearchTerm !== undefined) {
-      performSearch(debouncedSearchTerm)
+      performSearch(debouncedSearchTerm);
     }
-  }, [debouncedSearchTerm])
+  }, [debouncedSearchTerm, performSearch]);
 
   const loadInitialData = async () => {
     try {
       // Get SQLite status
-      const statusResponse = await chrome.runtime.sendMessage({ type: 'GET_SQLITE_STATUS' })
+      const statusResponse = await chrome.runtime.sendMessage({
+        type: 'GET_SQLITE_STATUS',
+      });
       if (statusResponse) {
-        setSqliteStatus(statusResponse)
+        setSqliteStatus(statusResponse);
       }
-
 
       // Get recent queries initially - call directly to bypass loading guard
-      const response = await chrome.runtime.sendMessage({ 
-        type: 'GET_RECENT_QUERIES', 
+      const response = await chrome.runtime.sendMessage({
+        type: 'GET_RECENT_QUERIES',
         limit: 50,
-        offset: 0
-      })
-      
-      if (response?.queries) {
-        setQueries(response.queries)
-        setOffset(50)
-        setHasMore(response.queries.length === 50)
-      } else {
-        setQueries([])
-        setOffset(0)
-        setHasMore(false)
-      }
-    } catch (error) {
-      console.error('Error loading data:', error)
-      setQueries([])
-    } finally {
-      setLoading(false)
-    }
-  }
+        offset: 0,
+      });
 
-  const performSearch = async (term: string) => {
-    if (loading) return // Don't search during initial load
-    
-    setSearching(true)
-    try {
-      let response;
-      if (term.trim() === '') {
-        // Get recent queries if no search term
-        response = await chrome.runtime.sendMessage({ 
-          type: 'GET_RECENT_QUERIES', 
-          limit: 50,
-          offset: 0
-        })
-      } else {
-        // Search queries
-        response = await chrome.runtime.sendMessage({ 
-          type: 'SEARCH_QUERIES', 
-          searchTerm: term,
-          limit: 50,
-          offset: 0
-        })
-      }
-      
       if (response?.queries) {
-        setQueries(response.queries)
-        setOffset(term.trim() === '' ? 50 : 0)
-        setHasMore(response.queries.length === 50)
+        setQueries(response.queries);
+        setOffset(50);
+        setHasMore(response.queries.length === 50);
       } else {
-        setQueries([])
-        setOffset(0)
-        setHasMore(false)
+        setQueries([]);
+        setOffset(0);
+        setHasMore(false);
       }
     } catch (error) {
-      console.error('Error searching queries:', error)
-      setQueries([])
-      setOffset(0)
-      setHasMore(false)
+      console.error('Error loading data:', error);
+      setQueries([]);
     } finally {
-      setSearching(false)
+      setLoading(false);
     }
-  }
+  };
 
   const loadMoreQueries = async () => {
-    if (loadingMore || !hasMore) return
-    
-    setLoadingMore(true)
+    if (loadingMore || !hasMore) return;
+
+    setLoadingMore(true);
     try {
       let response;
       if (searchTerm.trim() === '') {
         // Get more recent queries if no search term
-        response = await chrome.runtime.sendMessage({ 
-          type: 'GET_RECENT_QUERIES', 
+        response = await chrome.runtime.sendMessage({
+          type: 'GET_RECENT_QUERIES',
           limit: 50,
-          offset: offset
-        })
+          offset: offset,
+        });
       } else {
         // Search more queries (for search we don't implement pagination yet)
-        return
+        return;
       }
-      
+
       if (response?.queries && response.queries.length > 0) {
-        setQueries(prev => [...prev, ...response.queries])
-        setOffset(prev => prev + response.queries.length)
-        setHasMore(response.queries.length === 50)
+        setQueries(prev => [...prev, ...response.queries]);
+        setOffset(prev => prev + response.queries.length);
+        setHasMore(response.queries.length === 50);
       } else {
-        setHasMore(false)
+        setHasMore(false);
       }
     } catch (error) {
-      console.error('Error loading more queries:', error)
-      setHasMore(false)
+      console.error('Error loading more queries:', error);
+      setHasMore(false);
     } finally {
-      setLoadingMore(false)
+      setLoadingMore(false);
     }
-  }
-
-  
+  };
 
   const deleteQuery = async (queryId: number) => {
     try {
-      console.log('Popup: Attempting to delete query with ID:', queryId)
-      
+      console.log('Popup: Attempting to delete query with ID:', queryId);
+
       const response = await chrome.runtime.sendMessage({
         type: 'DELETE_QUERY',
-        queryId: queryId
-      })
-      
-      console.log('Popup: Delete response:', response)
-      
+        queryId: queryId,
+      });
+
+      console.log('Popup: Delete response:', response);
+
       if (response?.success) {
-        console.log('Popup: Delete successful, updating UI')
+        console.log('Popup: Delete successful, updating UI');
         // Remove from local state
-        setQueries(queries.filter(q => q.id !== queryId))
-        setSelectedQuery(null)
+        setQueries(queries.filter(q => q.id !== queryId));
+        setSelectedQuery(null);
       } else {
-        console.error('Popup: Failed to delete query, response:', response)
+        console.error('Popup: Failed to delete query, response:', response);
       }
     } catch (error) {
-      console.error('Popup: Error deleting query:', error)
+      console.error('Popup: Error deleting query:', error);
     }
-  }
+  };
 
-  const updateQueryDescription = async (queryId: number, description: string) => {
+  const updateQueryDescription = async (
+    queryId: number,
+    description: string
+  ) => {
     try {
-      console.log('Popup: Updating description for query ID:', queryId, 'to:', description);
-      
+      console.log(
+        'Popup: Updating description for query ID:',
+        queryId,
+        'to:',
+        description
+      );
+
       const response = await chrome.runtime.sendMessage({
         type: 'UPDATE_QUERY_DESCRIPTION',
         queryId: queryId,
-        description: description
-      })
-      
+        description: description,
+      });
+
       if (response?.success) {
         console.log('Popup: Description updated successfully');
         // Update local state
-        setSelectedQuery(prev => prev ? { ...prev, description } : null);
-        setQueries(prev => prev.map(q => q.id === queryId ? { ...q, description } : q));
+        setSelectedQuery(prev => (prev ? { ...prev, description } : null));
+        setQueries(prev =>
+          prev.map(q => (q.id === queryId ? { ...q, description } : q))
+        );
         return true;
       } else {
         console.error('Popup: Failed to update description');
@@ -222,16 +233,16 @@ function IndexPopup() {
       console.error('Popup: Error updating description:', error);
       return false;
     }
-  }
+  };
 
   const handleQueryClick = (query: QueryData) => {
     console.log('Popup: Query clicked, setting selectedQuery:', query.id);
-    setSelectedQuery(query)
-  }
+    setSelectedQuery(query);
+  };
 
   const handleBackClick = () => {
-    setSelectedQuery(null)
-  }
+    setSelectedQuery(null);
+  };
 
   if (loading) {
     return <LoadingScreen />;
@@ -263,7 +274,7 @@ function IndexPopup() {
       onQueryClick={handleQueryClick}
       onLoadMore={loadMoreQueries}
     />
-  )
+  );
 }
 
-export default IndexPopup
+export default IndexPopup;

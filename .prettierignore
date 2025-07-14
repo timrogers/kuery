@@ -1,0 +1,8 @@
+node_modules
+build
+dist
+.plasmo
+*.min.js
+*.bundle.js
+package-lock.json
+*.wasm

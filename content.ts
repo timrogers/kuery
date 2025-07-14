@@ -1,14 +1,14 @@
 // Content script for capturing Azure Data Explorer queries
 // This script runs in the context of Azure Data Explorer pages
 
-import type { PlasmoCSConfig } from "plasmo"
+import type { PlasmoCSConfig } from 'plasmo';
 
 export const config: PlasmoCSConfig = {
   matches: [
-    "https://dataexplorer.azure.com/*",
-    "https://*.kusto.windows.net/*"
-  ]
-}
+    'https://dataexplorer.azure.com/*',
+    'https://*.kusto.windows.net/*',
+  ],
+};
 
 interface KustoQueryData {
   query: string;
@@ -16,7 +16,7 @@ interface KustoQueryData {
   cluster: string;
   url: string;
   timestamp: string;
-  requestBody?: any;
+  requestBody?: unknown;
   responsePreview?: {
     hasResults: boolean;
     resultCount: number;
@@ -34,13 +34,17 @@ function injectScript(): void {
   script.src = chrome.runtime.getURL('assets/inject.js');
   (document.head || document.documentElement).appendChild(script);
   script.remove();
-  
+
   // Verify injection worked
   setTimeout(() => {
-    if ((window as any).kueryInjected) {
-      console.log('Kuery: Injection successful - script is running in page context');
+    if ((window as unknown as { kueryInjected?: boolean }).kueryInjected) {
+      console.log(
+        'Kuery: Injection successful - script is running in page context'
+      );
     } else {
-      console.error('Kuery: Injection failed - script not running in page context');
+      console.error(
+        'Kuery: Injection failed - script not running in page context'
+      );
     }
   }, 100);
 }
@@ -49,26 +53,32 @@ function injectScript(): void {
 function setupMessageListener(): void {
   window.addEventListener('message', (event: MessageEvent<WindowMessage>) => {
     if (event.source !== window) return;
-    
+
     if (event.data.type === 'KUSTO_QUERY_INTERCEPTED') {
       // Send to background script
-      chrome.runtime.sendMessage({
-        type: 'SAVE_QUERY',
-        data: event.data.payload
-      }, (response) => {
-        if (chrome.runtime.lastError) {
-          console.error("Kuery: Error sending message:", chrome.runtime.lastError);
-        } else if (response?.success) {
-          console.log('Kuery: Query saved successfully');
-        } else {
-          console.log('Kuery: Query not saved - SQLite may not be available');
+      chrome.runtime.sendMessage(
+        {
+          type: 'SAVE_QUERY',
+          data: event.data.payload,
+        },
+        response => {
+          if (chrome.runtime.lastError) {
+            console.error(
+              'Kuery: Error sending message:',
+              chrome.runtime.lastError
+            );
+          } else if (response?.success) {
+            console.log('Kuery: Query saved successfully');
+          } else {
+            console.log('Kuery: Query not saved - SQLite may not be available');
+          }
         }
-      });
+      );
     }
   });
-  
+
   // Listen for messages from background script
-  chrome.runtime.onMessage.addListener((message) => {
+  chrome.runtime.onMessage.addListener(message => {
     if (message.type === 'SQLITE_ERROR') {
       showSQLiteErrorOverlay(message.message, message.error);
     }
@@ -100,7 +110,7 @@ function showSQLiteErrorOverlay(message: string, error: string) {
     box-shadow: 0 10px 25px rgba(0,0,0,0.3);
     border-left: 4px solid #fca5a5;
   `;
-  
+
   overlay.innerHTML = `
     <div style="display: flex; align-items: flex-start; gap: 12px;">
       <div style="font-size: 18px;">⚠️</div>
@@ -126,16 +136,16 @@ function showSQLiteErrorOverlay(message: string, error: string) {
       </div>
     </div>
   `;
-  
+
   document.body.appendChild(overlay);
-  
+
   // Auto-dismiss after 30 seconds
   const autoRemove = setTimeout(() => {
     if (overlay.parentNode) {
       overlay.remove();
     }
   }, 30000);
-  
+
   // Manual dismiss
   const dismissButton = overlay.querySelector('#kuery-dismiss-error');
   if (dismissButton) {
@@ -152,11 +162,11 @@ function createPageObserver(): MutationObserver {
     const selectors = [
       '[data-test-id="query-editor"]',
       '.monaco-editor',
-      '[class*="query"]'
+      '[class*="query"]',
     ];
-    
+
     console.log('Kuery: Checking for Azure Data Explorer elements...');
-    
+
     const hasTargetElement = selectors.some(selector => {
       const element = document.querySelector(selector);
       if (element) {
@@ -165,7 +175,7 @@ function createPageObserver(): MutationObserver {
       }
       return false;
     });
-    
+
     if (hasTargetElement) {
       console.log('Kuery: Page is ready, posting ADE_PAGE_READY message');
       window.postMessage({ type: 'ADE_PAGE_READY' }, '*');
@@ -174,32 +184,34 @@ function createPageObserver(): MutationObserver {
       console.log('Kuery: Page not ready yet, continuing to observe...');
     }
   });
-  
+
   return observer;
 }
 
 // Initialize content script
 function initialize(): void {
   // Only run on Azure Data Explorer domains
-  if (!window.location.hostname.includes('dataexplorer.azure.com') && 
-      !window.location.hostname.includes('kusto.windows.net')) {
+  if (
+    !window.location.hostname.includes('dataexplorer.azure.com') &&
+    !window.location.hostname.includes('kusto.windows.net')
+  ) {
     return;
   }
-  
+
   console.log('Kuery: Initializing on Azure Data Explorer page');
-  
+
   // Inject script immediately to catch early network requests
   console.log('Kuery: Injecting script to intercept network requests');
   injectScript();
-  
+
   // Set up message listener
   console.log('Kuery: Setting up message listener');
   setupMessageListener();
-  
+
   // Set up page observer
   console.log('Kuery: Setting up page observer');
   const observer = createPageObserver();
-  
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', () => {
       console.log('Kuery: DOM content loaded, starting observer');
@@ -208,30 +220,35 @@ function initialize(): void {
       }
     });
   } else {
-    console.log('Kuery: Document already loaded, starting observer immediately');
+    console.log(
+      'Kuery: Document already loaded, starting observer immediately'
+    );
     if (document.body) {
       observer.observe(document.body, { childList: true, subtree: true });
     }
   }
-  
+
   // Also trigger an immediate check
   console.log('Kuery: Doing immediate check for page elements');
   setTimeout(() => {
     const selectors = [
       '[data-test-id="query-editor"]',
       '.monaco-editor',
-      '[class*="query"]'
+      '[class*="query"]',
     ];
-    
+
     const hasTargetElement = selectors.some(selector => {
       const element = document.querySelector(selector);
       if (element) {
-        console.log('Kuery: Found target element in immediate check:', selector);
+        console.log(
+          'Kuery: Found target element in immediate check:',
+          selector
+        );
         return true;
       }
       return false;
     });
-    
+
     if (hasTargetElement) {
       console.log('Kuery: Page ready via immediate check, posting message');
       window.postMessage({ type: 'ADE_PAGE_READY' }, '*');

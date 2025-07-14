@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import CopyButton from './CopyButton';
 import DeleteConfirmation from './DeleteConfirmation';
 
@@ -17,14 +17,17 @@ interface QueryDetailProps {
   query: QueryData;
   onBack: () => void;
   onDelete: (queryId: number) => void;
-  onUpdateDescription: (queryId: number, description: string) => Promise<boolean>;
+  onUpdateDescription: (
+    queryId: number,
+    description: string
+  ) => Promise<boolean>;
 }
 
 const QueryDetail: React.FC<QueryDetailProps> = ({
   query,
   onBack,
   onDelete,
-  onUpdateDescription
+  onUpdateDescription,
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [editingDescription, setEditingDescription] = useState(false);
@@ -53,15 +56,19 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
   };
 
   return (
-    <div style={{ padding: 16, width: 300, fontFamily: 'system-ui, sans-serif' }}>
+    <div
+      style={{ padding: 16, width: 300, fontFamily: 'system-ui, sans-serif' }}
+    >
       {/* Back button header */}
-      <div style={{ 
-        display: 'flex', 
-        alignItems: 'center', 
-        marginBottom: 16,
-        paddingBottom: 12,
-        borderBottom: '1px solid #e2e8f0'
-      }}>
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          marginBottom: 16,
+          paddingBottom: 12,
+          borderBottom: '1px solid #e2e8f0',
+        }}
+      >
         <button
           onClick={onBack}
           style={{
@@ -74,22 +81,24 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
             alignItems: 'center',
             color: '#2563eb',
             fontSize: '14px',
-            fontWeight: '500'
+            fontWeight: '500',
           }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#f0f9ff'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+          onMouseEnter={e => (e.target.style.backgroundColor = '#f0f9ff')}
+          onMouseLeave={e => (e.target.style.backgroundColor = 'transparent')}
         >
           ← Back
         </button>
-        <div style={{ 
-          marginLeft: 'auto',
-          background: query.runs_count > 1 ? '#3b82f6' : '#6b7280',
-          color: 'white',
-          padding: '4px 8px',
-          borderRadius: 12,
-          fontSize: '12px',
-          fontWeight: 'bold'
-        }}>
+        <div
+          style={{
+            marginLeft: 'auto',
+            background: query.runs_count > 1 ? '#3b82f6' : '#6b7280',
+            color: 'white',
+            padding: '4px 8px',
+            borderRadius: 12,
+            fontSize: '12px',
+            fontWeight: 'bold',
+          }}
+        >
           Used {query.runs_count} time{query.runs_count !== 1 ? 's' : ''}
         </div>
       </div>
@@ -98,15 +107,17 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
       <div style={{ marginBottom: 20 }}>
         {/* Description */}
         <div style={{ marginBottom: 12 }}>
-          <div style={{ 
-            fontSize: '12px', 
-            fontWeight: '500', 
-            color: '#374151', 
-            marginBottom: 8, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center' 
-          }}>
+          <div
+            style={{
+              fontSize: '12px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             Description:
             {!editingDescription && (
               <button
@@ -118,30 +129,30 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
                   padding: '2px 6px',
                   borderRadius: 3,
                   cursor: 'pointer',
-                  fontSize: '10px'
+                  fontSize: '10px',
                 }}
               >
                 Edit
               </button>
             )}
           </div>
-          
+
           {editingDescription ? (
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
               <input
                 type="text"
                 value={editedDescription}
-                onChange={(e) => setEditedDescription(e.target.value)}
+                onChange={e => setEditedDescription(e.target.value)}
                 style={{
                   flex: 1,
                   padding: '6px 8px',
                   borderRadius: 4,
                   border: '1px solid #d1d5db',
                   fontSize: '14px',
-                  fontFamily: 'system-ui, sans-serif'
+                  fontFamily: 'system-ui, sans-serif',
                 }}
                 autoFocus
-                onKeyDown={(e) => {
+                onKeyDown={e => {
                   if (e.key === 'Enter') {
                     handleUpdateDescription();
                   } else if (e.key === 'Escape') {
@@ -158,7 +169,7 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
                   padding: '4px 8px',
                   borderRadius: 3,
                   cursor: 'pointer',
-                  fontSize: '12px'
+                  fontSize: '12px',
                 }}
               >
                 Save
@@ -172,31 +183,47 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
                   padding: '4px 8px',
                   borderRadius: 3,
                   cursor: 'pointer',
-                  fontSize: '12px'
+                  fontSize: '12px',
                 }}
               >
                 Cancel
               </button>
             </div>
           ) : (
-            <div style={{
-              background: '#f8fafc',
-              border: '1px solid #e2e8f0',
-              borderRadius: 4,
-              padding: 8,
-              fontSize: '14px',
-              color: '#1f2937'
-            }}>
+            <div
+              style={{
+                background: '#f8fafc',
+                border: '1px solid #e2e8f0',
+                borderRadius: 4,
+                padding: 8,
+                fontSize: '14px',
+                color: '#1f2937',
+              }}
+            >
               {query.description}
             </div>
           )}
         </div>
 
         <div style={{ marginBottom: 12 }}>
-          <div style={{ fontSize: '12px', fontWeight: '500', color: '#374151', marginBottom: 4 }}>
+          <div
+            style={{
+              fontSize: '12px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: 4,
+            }}
+          >
             Source:
           </div>
-          <div style={{ fontSize: '14px', fontWeight: 'bold', color: '#1f2937', marginBottom: 4 }}>
+          <div
+            style={{
+              fontSize: '14px',
+              fontWeight: 'bold',
+              color: '#1f2937',
+              marginBottom: 4,
+            }}
+          >
             {query.cluster || 'Unknown Cluster'}
             {query.database && ` / ${query.database}`}
           </div>
@@ -206,15 +233,17 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
         </div>
 
         <div style={{ marginBottom: 16 }}>
-          <div style={{ 
-            fontSize: '12px', 
-            fontWeight: '500', 
-            color: '#374151', 
-            marginBottom: 8, 
-            display: 'flex', 
-            justifyContent: 'space-between', 
-            alignItems: 'center' 
-          }}>
+          <div
+            style={{
+              fontSize: '12px',
+              fontWeight: '500',
+              color: '#374151',
+              marginBottom: 8,
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+            }}
+          >
             Query:
             <CopyButton
               textToCopy={query.query}
@@ -225,27 +254,29 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
                 borderRadius: 4,
                 cursor: 'pointer',
                 fontSize: '10px',
-                color: '#2563eb'
+                color: '#2563eb',
               }}
               title="Copy Query"
             >
               Copy
             </CopyButton>
           </div>
-          <div style={{
-            background: '#f8fafc',
-            border: '1px solid #e2e8f0',
-            borderRadius: 6,
-            padding: 12,
-            fontFamily: 'Monaco, Menlo, monospace',
-            fontSize: '11px',
-            lineHeight: '1.5',
-            color: '#1f2937',
-            whiteSpace: 'pre-wrap',
-            wordBreak: 'break-word',
-            maxHeight: '200px',
-            overflowY: 'auto'
-          }}>
+          <div
+            style={{
+              background: '#f8fafc',
+              border: '1px solid #e2e8f0',
+              borderRadius: 6,
+              padding: 12,
+              fontFamily: 'Monaco, Menlo, monospace',
+              fontSize: '11px',
+              lineHeight: '1.5',
+              color: '#1f2937',
+              whiteSpace: 'pre-wrap',
+              wordBreak: 'break-word',
+              maxHeight: '200px',
+              overflowY: 'auto',
+            }}
+          >
             {query.query}
           </div>
         </div>
@@ -269,10 +300,10 @@ const QueryDetail: React.FC<QueryDetailProps> = ({
             cursor: 'pointer',
             fontSize: '14px',
             fontWeight: '500',
-            width: '100%'
+            width: '100%',
           }}
-          onMouseEnter={(e) => e.target.style.backgroundColor = '#b91c1c'}
-          onMouseLeave={(e) => e.target.style.backgroundColor = '#dc2626'}
+          onMouseEnter={e => (e.target.style.backgroundColor = '#b91c1c')}
+          onMouseLeave={e => (e.target.style.backgroundColor = '#dc2626')}
         >
           Delete Query
         </button>

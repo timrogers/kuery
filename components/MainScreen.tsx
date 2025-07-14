@@ -1,8 +1,8 @@
 import React from 'react';
 import PopupHeader from './PopupHeader';
-import SQLiteStatus from './SQLiteStatus';
-import SearchBox from './SearchBox';
 import QueryList from './QueryList';
+import SearchBox from './SearchBox';
+import SQLiteStatus from './SQLiteStatus';
 
 interface QueryData {
   id: number;
@@ -46,12 +46,14 @@ const MainScreen: React.FC<MainScreenProps> = ({
   hasMore,
   onSearchTermChange,
   onQueryClick,
-  onLoadMore
+  onLoadMore,
 }) => {
   return (
-    <div style={{ padding: 16, width: 300, fontFamily: 'system-ui, sans-serif' }}>
+    <div
+      style={{ padding: 16, width: 300, fontFamily: 'system-ui, sans-serif' }}
+    >
       <PopupHeader />
-      
+
       <SQLiteStatus sqliteStatus={sqliteStatus} />
 
       <SearchBox
@@ -71,12 +73,14 @@ const MainScreen: React.FC<MainScreenProps> = ({
         onLoadMore={onLoadMore}
       />
 
-      <div style={{ 
-        marginTop: 12, 
-        fontSize: '11px', 
-        color: '#9ca3af',
-        textAlign: 'center'
-      }}>
+      <div
+        style={{
+          marginTop: 12,
+          fontSize: '11px',
+          color: '#9ca3af',
+          textAlign: 'center',
+        }}
+      >
         Visit Azure Data Explorer to capture queries automatically
       </div>
     </div>
