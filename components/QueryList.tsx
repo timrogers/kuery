@@ -20,6 +20,7 @@ interface QueryListProps {
   hasMore: boolean;
   onQueryClick: (query: QueryData) => void;
   onLoadMore: () => void;
+  isFullHeight?: boolean;
 }
 
 const QueryList: React.FC<QueryListProps> = ({
@@ -29,6 +30,7 @@ const QueryList: React.FC<QueryListProps> = ({
   hasMore,
   onQueryClick,
   onLoadMore,
+  isFullHeight = false,
 }) => {
   if (queries.length === 0) {
     return (
@@ -48,12 +50,29 @@ const QueryList: React.FC<QueryListProps> = ({
   }
 
   return (
-    <div style={{ marginBottom: 16 }}>
-      <h4 style={{ margin: '0 0 8px 0', fontSize: '14px', color: '#374151' }}>
+    <div style={{ 
+      marginBottom: isFullHeight ? 0 : 16,
+      flex: isFullHeight ? 1 : 'none',
+      display: isFullHeight ? 'flex' : 'block',
+      flexDirection: isFullHeight ? 'column' : 'row',
+      minHeight: isFullHeight ? 0 : 'auto'
+    }}>
+      <h4 style={{ 
+        margin: '0 0 8px 0', 
+        fontSize: isFullHeight ? '18px' : '14px', 
+        color: '#374151',
+        flexShrink: 0
+      }}>
         {searchTerm ? 'Search Results' : 'Recent Queries'}
       </h4>
       <div
-        style={{ maxHeight: 300, overflowY: 'auto' }}
+        style={{ 
+          maxHeight: isFullHeight ? 'none' : 300, 
+          height: isFullHeight ? '100%' : 'auto',
+          flex: isFullHeight ? 1 : 'none',
+          overflowY: 'auto',
+          minHeight: isFullHeight ? 0 : 'auto'
+        }}
         onScroll={e => {
           const target = e.target as HTMLDivElement;
           if (
@@ -89,6 +108,7 @@ const QueryList: React.FC<QueryListProps> = ({
                   display: '-webkit-box',
                   WebkitLineClamp: 2,
                   WebkitBoxOrient: 'vertical',
+                  fontSize: isFullHeight ? '16px' : '14px',
                 }}
               >
                 {query.description}
@@ -134,11 +154,16 @@ const QueryList: React.FC<QueryListProps> = ({
                 overflow: 'hidden',
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
+                fontSize: isFullHeight ? '14px' : '12px',
               }}
             >
-              {query.query.substring(0, 60)}...
+              {query.query.substring(0, isFullHeight ? 100 : 60)}...
             </div>
-            <div style={{ color: '#9ca3af', fontSize: '11px', marginTop: 4 }}>
+            <div style={{ 
+              color: '#9ca3af', 
+              fontSize: isFullHeight ? '13px' : '11px', 
+              marginTop: 4 
+            }}>
               Last used: {new Date(query.last_used_at).toLocaleString()}
             </div>
           </div>
