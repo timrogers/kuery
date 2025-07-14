@@ -1,0 +1,61 @@
+{
+  "name": "kuery",
+  "displayName": "Kuery",
+  "version": "0.0.1",
+  "description": "A basic Plasmo extension.",
+  "author": "Tim Rogers <me@timrogers.co.uk>",
+  "scripts": {
+    "dev": "plasmo dev",
+    "build": "plasmo build",
+    "package": "plasmo package"
+  },
+  "dependencies": {
+    "openai": "^5.9.0",
+    "plasmo": "0.90.5",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "sql.js": "^1.13.0"
+  },
+  "devDependencies": {
+    "@ianvs/prettier-plugin-sort-imports": "4.1.1",
+    "@types/chrome": "0.0.258",
+    "@types/node": "20.11.5",
+    "@types/react": "18.2.48",
+    "@types/react-dom": "18.2.18",
+    "prettier": "3.2.4",
+    "typescript": "5.3.3"
+  },
+  "plasmo": {
+    "popup": "popup.tsx",
+    "background": "background.ts",
+    "options": "options/index.tsx"
+  },
+  "manifest": {
+    "permissions": [
+      "storage",
+      "tabs",
+      "activeTab"
+    ],
+    "host_permissions": [
+      "https://dataexplorer.azure.com/*",
+      "https://*.kusto.windows.net/*"
+    ],
+    "web_accessible_resources": [
+      {
+        "resources": [
+          "assets/*"
+        ],
+        "matches": [
+          "<all_urls>"
+        ]
+      }
+    ],
+    "content_security_policy": {
+      "extension_pages": "script-src 'self' 'wasm-unsafe-eval'; object-src 'self';"
+    },
+    "options_ui": {
+      "page": "options.html",
+      "open_in_tab": true
+    }
+  }
+}

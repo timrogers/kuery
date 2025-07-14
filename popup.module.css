@@ -1,0 +1,15 @@
+.queryItem {
+  padding: 8px;
+  margin-bottom: 6px;
+  background: white;
+  border: 1px solid #e2e8f0;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.queryItem:hover {
+  background-color: #f8fafc;
+  border-color: #3b82f6;
+}
