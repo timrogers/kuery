@@ -19,6 +19,7 @@
     "plasmo": "0.90.5",
     "react": "18.2.0",
     "react-dom": "18.2.0",
+    "sharp": "^0.34.3",
     "sql.js": "^1.13.0"
   },
   "devDependencies": {
