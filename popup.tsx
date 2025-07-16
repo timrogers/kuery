@@ -28,6 +28,7 @@ interface QueryData {
   last_used_at: string;
   created_at: string;
   description: string;
+  starred_at?: string;
 }
 
 function IndexPopup() {
@@ -49,17 +50,29 @@ function IndexPopup() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showStarredOnly, setShowStarredOnly] = useState(false);
+  const [scrollPosition, setScrollPosition] = useState(0);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const performSearch = useCallback(
-    async (term: string) => {
+    async (term: string, isFilterChange = false) => {
       if (loading) return; // Don't search during initial load
 
-      setSearching(true);
+      // Only show searching indicator for actual text searches, not filter changes
+      if (!isFilterChange && term.trim() !== '') {
+        setSearching(true);
+      }
+      
       try {
         let response;
-        if (term.trim() === '') {
+        if (showStarredOnly) {
+          // Get starred queries only
+          response = await chrome.runtime.sendMessage({
+            type: 'GET_STARRED_QUERIES',
+            limit: 50,
+          });
+        } else if (term.trim() === '') {
           // Get recent queries if no search term
           response = await chrome.runtime.sendMessage({
             type: 'GET_RECENT_QUERIES',
@@ -78,8 +91,8 @@ function IndexPopup() {
 
         if (response?.queries) {
           setQueries(response.queries);
-          setOffset(term.trim() === '' ? 50 : 0);
-          setHasMore(response.queries.length === 50);
+          setOffset(term.trim() === '' && !showStarredOnly ? 50 : 0);
+          setHasMore(response.queries.length === 50 && !showStarredOnly);
         } else {
           setQueries([]);
           setOffset(0);
@@ -94,7 +107,7 @@ function IndexPopup() {
         setSearching(false);
       }
     },
-    [loading]
+    [loading, showStarredOnly]
   );
 
   useEffect(() => {
@@ -107,6 +120,13 @@ function IndexPopup() {
       performSearch(debouncedSearchTerm);
     }
   }, [debouncedSearchTerm, performSearch]);
+
+  useEffect(() => {
+    // Re-fetch when starred filter changes
+    if (!loading) {
+      performSearch(debouncedSearchTerm, true); // Pass true to indicate this is a filter change
+    }
+  }, [showStarredOnly, performSearch, loading, debouncedSearchTerm]);
 
   const loadInitialData = async () => {
     try {
@@ -143,7 +163,7 @@ function IndexPopup() {
   };
 
   const loadMoreQueries = async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || showStarredOnly) return;
 
     setLoadingMore(true);
     try {
@@ -235,13 +255,53 @@ function IndexPopup() {
     }
   };
 
-  const handleQueryClick = (query: QueryData) => {
+  const handleQueryClick = (query: QueryData, scrollTop: number) => {
     console.log('Popup: Query clicked, setting selectedQuery:', query.id);
+    
+    // Save current scroll position before navigating to detail view
+    setScrollPosition(scrollTop);
     setSelectedQuery(query);
   };
 
   const handleBackClick = () => {
     setSelectedQuery(null);
+    // Scroll position will be restored by the QueryList component's useEffect
+  };
+
+  const handleStarClick = async (queryId: number) => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'TOGGLE_QUERY_STARRED',
+        queryId: queryId,
+      });
+
+      if (response?.success) {
+        // Update local state
+        setQueries(prev => prev.map(q => {
+          if (q.id === queryId) {
+            return {
+              ...q,
+              starred_at: q.starred_at ? undefined : new Date().toISOString(),
+            };
+          }
+          return q;
+        }));
+        
+        // Update selected query if it's the one being starred
+        if (selectedQuery?.id === queryId) {
+          setSelectedQuery(prev => prev ? {
+            ...prev,
+            starred_at: prev.starred_at ? undefined : new Date().toISOString(),
+          } : null);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling starred status:', error);
+    }
+  };
+
+  const handleToggleStarredFilter = () => {
+    setShowStarredOnly(prev => !prev);
   };
 
   if (loading) {
@@ -270,9 +330,13 @@ function IndexPopup() {
       sqliteStatus={sqliteStatus}
       loadingMore={loadingMore}
       hasMore={hasMore}
+      showStarredOnly={showStarredOnly}
+      scrollPosition={scrollPosition}
       onSearchTermChange={setSearchTerm}
       onQueryClick={handleQueryClick}
       onLoadMore={loadMoreQueries}
+      onStarClick={handleStarClick}
+      onToggleStarredFilter={handleToggleStarredFilter}
     />
   );
 }

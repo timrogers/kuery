@@ -2,6 +2,7 @@
   'use strict';
 
   let isReady = false;
+  let dashboardFilteringEnabled = true; // Can be configured via extension settings
 
   // Listen for page ready signal
   window.addEventListener('message', event => {
@@ -117,10 +118,39 @@
     );
   }
 
+  function isDashboardQuery(url, config, queryText) {
+    // Check URL patterns for dashboard context
+    const dashboardUrlPatterns = [
+      /dashboard|dashboards|tiles|widgets/i,
+      /\/d\//i, // Common dashboard URL pattern
+      /\/tile\//i
+    ];
+    
+    const currentPageUrl = window.location.href;
+    const isDashboardPage = dashboardUrlPatterns.some(pattern => pattern.test(currentPageUrl));
+    
+    console.log('=== DASHBOARD DETECTION RESULT ===');
+    console.log('Current page URL:', currentPageUrl);
+    console.log('Dashboard page detected:', isDashboardPage);
+    
+    if (isDashboardPage) {
+      console.log('Kuery: Dashboard page detected - filtering out query');
+    } else {
+      console.log('Kuery: Not on dashboard page - allowing query');
+    }
+    
+    console.log('=== END DASHBOARD DETECTION RESULT ===');
+    
+    return isDashboardPage; // Filter out all dashboard queries
+  }
+
   async function interceptKustoRequest(url, config, response) {
     console.log('Kuery: Starting to intercept Kusto request to:', url);
     console.log('Kuery: Response status:', response.status);
     console.log('Kuery: Response headers:', response.headers);
+
+    // Simple dashboard detection based on URL patterns
+    console.log('Kuery: Checking if this is a dashboard page...');
 
     try {
       let requestBody = config?.body;
@@ -324,19 +354,30 @@
       };
 
       if (queryText && queryText.trim()) {
+        // Check if this is a dashboard query
+        const isDashboard = isDashboardQuery(url, config, queryText);
+        
         console.log(
           'Kuery: Intercepted query with hasResults:',
           hasResults,
           'resultCount:',
-          resultCount
+          resultCount,
+          'isDashboard:',
+          isDashboard
         );
-        window.postMessage(
-          {
-            type: 'KUSTO_QUERY_INTERCEPTED',
-            payload: queryData,
-          },
-          '*'
-        );
+        
+        if (!dashboardFilteringEnabled || !isDashboard) {
+          console.log('Kuery: Sending query to extension (dashboard filtering:', dashboardFilteringEnabled, 'isDashboard:', isDashboard, ')');
+          window.postMessage(
+            {
+              type: 'KUSTO_QUERY_INTERCEPTED',
+              payload: queryData,
+            },
+            '*'
+          );
+        } else {
+          console.log('Kuery: Query is from dashboard, skipping capture');
+        }
       }
     } catch (error) {
       console.error('Kuery: Error intercepting request:', error);

@@ -242,17 +242,28 @@ const migrations: Migration[] = [
       );
     },
   },
-  // Future migrations can be added here
-  // {
-  //   version: 2,
-  //   description: 'Add new feature table',
-  //   up: (db: any) => {
-  //     db.exec('CREATE TABLE new_feature (id INTEGER PRIMARY KEY, data TEXT)');
-  //   },
-  //   down: (db: any) => {
-  //     db.exec('DROP TABLE new_feature');
-  //   }
-  // }
+  {
+    version: 2,
+    description: 'Add starred_at column for query favorites',
+    up: (db: any) => {
+      // Check if starred_at column exists before adding it
+      const tableInfo = db.exec('PRAGMA table_info(queries)');
+      const columns =
+        tableInfo && tableInfo.length > 0
+          ? tableInfo[0].values.map(row => row[1])
+          : [];
+
+      if (!columns.includes('starred_at')) {
+        db.exec('ALTER TABLE queries ADD COLUMN starred_at DATETIME');
+      }
+    },
+    down: (_db: any) => {
+      // SQLite doesn't support DROP COLUMN, so this would require recreating the table
+      console.warn(
+        'Kuery: Downgrade from migration 2 not supported (SQLite limitation)'
+      );
+    },
+  },
 ];
 
 function createSchemaVersionTable() {
@@ -586,6 +597,7 @@ async function getRecentQueries(limit: number = 10, offset: number = 0) {
         last_used_at: query.last_used_at,
         created_at: query.created_at,
         description: query.description || 'Untitled',
+        starred_at: query.starred_at,
         request_body: query.request_body
           ? JSON.parse(query.request_body)
           : null,
@@ -641,6 +653,7 @@ async function searchQueries(searchTerm: string, limit: number = 50) {
         database: row.database_name,
         cluster: row.cluster_name,
         description: row.description || 'Untitled',
+        starred_at: row.starred_at,
         request_body: row.request_body ? JSON.parse(row.request_body) : null,
         response_preview: row.response_preview
           ? JSON.parse(row.response_preview)
@@ -745,6 +758,85 @@ async function updateQueryDescription(queryId: number, description: string) {
   } catch (error) {
     console.error('Kuery: Error updating description:', error);
     return false;
+  }
+}
+
+async function toggleQueryStarred(queryId: number) {
+  if (!sqliteAvailable || !db || !SQL) {
+    console.error(
+      'Kuery: Cannot toggle starred status - SQLite database is not available'
+    );
+    return false;
+  }
+
+  try {
+    console.log('Kuery: Toggling starred status for query ID:', queryId);
+
+    const updateStmt = db.prepare(
+      'UPDATE queries SET starred_at = CASE WHEN starred_at IS NULL THEN datetime("now") ELSE NULL END WHERE id = ?'
+    );
+    updateStmt.run([queryId]);
+    updateStmt.free();
+
+    // Save database to storage
+    await saveDatabaseToStorage();
+
+    console.log('Kuery: Starred status toggled successfully');
+    return true;
+  } catch (error) {
+    console.error('Kuery: Error toggling starred status:', error);
+    return false;
+  }
+}
+
+async function getStarredQueries(limit: number = 50) {
+  if (!sqliteAvailable || !db || !SQL) {
+    return [];
+  }
+
+  try {
+    const result = db.exec(
+      `SELECT * FROM queries WHERE starred_at IS NOT NULL ORDER BY starred_at DESC LIMIT ${limit}`
+    );
+
+    if (!result || result.length === 0 || !result[0].values) {
+      return [];
+    }
+
+    const columns = result[0].columns;
+    const rows = result[0].values;
+
+    const queries = rows.map(row => {
+      const query: Record<string, any> = {};
+      columns.forEach((col, index) => {
+        query[col] = row[index];
+      });
+
+      // Transform to match expected format
+      return {
+        id: query.id,
+        query: query.query_text,
+        database: query.database_name,
+        cluster: query.cluster_name,
+        url: query.url,
+        runs_count: query.runs_count || 1,
+        last_used_at: query.last_used_at,
+        created_at: query.created_at,
+        description: query.description || 'Untitled',
+        starred_at: query.starred_at,
+        request_body: query.request_body
+          ? JSON.parse(query.request_body)
+          : null,
+        response_preview: query.response_preview
+          ? JSON.parse(query.response_preview)
+          : null,
+      };
+    });
+
+    return queries;
+  } catch (error) {
+    console.error('Kuery: Error getting starred queries:', error);
+    return [];
   }
 }
 
@@ -1044,6 +1136,21 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           );
           console.log('Kuery Background: Update result:', updateSuccess);
           sendResponse({ success: updateSuccess });
+          break;
+
+        case 'TOGGLE_QUERY_STARRED':
+          console.log(
+            'Kuery Background: Processing TOGGLE_QUERY_STARRED for ID:',
+            message.queryId
+          );
+          const toggleSuccess = await toggleQueryStarred(message.queryId);
+          console.log('Kuery Background: Toggle starred result:', toggleSuccess);
+          sendResponse({ success: toggleSuccess });
+          break;
+
+        case 'GET_STARRED_QUERIES':
+          const starredQueries = await getStarredQueries(message.limit || 50);
+          sendResponse({ queries: starredQueries });
           break;
 
         case 'GET_SQLITE_STATUS':

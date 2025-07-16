@@ -1,7 +1,7 @@
 {
   "name": "kuery",
   "displayName": "Kuery",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Automatically track and manage your Azure Data Explorer queries, including AI-powered summaries",
   "author": "Tim Rogers <me@timrogers.co.uk>",
   "scripts": {
