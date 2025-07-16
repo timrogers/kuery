@@ -8,7 +8,7 @@ Kuery automatically captures and stores your Azure Data Explorer queries in a lo
 
 - **Query History**: Automatically saves all successful queries with metadata (database, cluster, run count, timestamps)
 - **AI-Powered Descriptions**: Generates concise descriptions for your queries using OpenAI GPT-4.1, powered by GitHub Models
-- **Query Management**: Edit descriptions, delete queries, and view detailed query information
+- **Query Management**: Star useful queries, edit descriptions, delete queries, and view detailed query information
 - **Data Export/Import**: Export your query database or import from other devices
 
 ## Getting started

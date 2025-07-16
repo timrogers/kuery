@@ -13,6 +13,7 @@ interface QueryData {
   last_used_at: string;
   created_at: string;
   description: string;
+  starred_at?: string;
 }
 
 interface TabMainScreenProps {
@@ -31,9 +32,12 @@ interface TabMainScreenProps {
   } | null;
   loadingMore: boolean;
   hasMore: boolean;
+  showStarredOnly: boolean;
   onSearchTermChange: (term: string) => void;
   onQueryClick: (query: QueryData) => void;
   onLoadMore: () => void;
+  onStarClick: (queryId: number) => void;
+  onToggleStarredFilter: () => void;
 }
 
 const TabMainScreen: React.FC<TabMainScreenProps> = ({
@@ -44,9 +48,12 @@ const TabMainScreen: React.FC<TabMainScreenProps> = ({
   sqliteStatus,
   loadingMore,
   hasMore,
+  showStarredOnly,
   onSearchTermChange,
   onQueryClick,
   onLoadMore,
+  onStarClick,
+  onToggleStarredFilter,
 }) => {
   return (
     <div style={{ 
@@ -86,6 +93,27 @@ const TabMainScreen: React.FC<TabMainScreenProps> = ({
               loading={loading}
               queries={queries}
             />
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '12px' }}>
+              <button
+                onClick={onToggleStarredFilter}
+                style={{
+                  background: showStarredOnly ? '#3b82f6' : '#f3f4f6',
+                  color: showStarredOnly ? 'white' : '#374151',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '6px',
+                }}
+              >
+                <span style={{ fontSize: '16px' }}>★</span>
+                {showStarredOnly ? 'Show All' : 'Starred Only'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -102,6 +130,7 @@ const TabMainScreen: React.FC<TabMainScreenProps> = ({
             hasMore={hasMore}
             onQueryClick={onQueryClick}
             onLoadMore={onLoadMore}
+            onStarClick={onStarClick}
             isFullHeight={true}
           />
         </div>

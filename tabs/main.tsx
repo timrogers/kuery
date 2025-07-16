@@ -29,6 +29,7 @@ interface QueryData {
   last_used_at: string;
   created_at: string;
   description: string;
+  starred_at?: string;
 }
 
 function TabApp() {
@@ -51,17 +52,27 @@ function TabApp() {
   const [offset, setOffset] = useState(0);
   const [hasMore, setHasMore] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [showStarredOnly, setShowStarredOnly] = useState(false);
 
   const debouncedSearchTerm = useDebounce(searchTerm, 300);
 
   const performSearch = useCallback(
-    async (term: string) => {
+    async (term: string, isFilterChange = false) => {
       if (loading) return;
 
-      setSearching(true);
+      // Only show searching indicator for actual text searches, not filter changes
+      if (!isFilterChange && term.trim() !== '') {
+        setSearching(true);
+      }
+      
       try {
         let response;
-        if (term.trim() === '') {
+        if (showStarredOnly) {
+          response = await chrome.runtime.sendMessage({
+            type: 'GET_STARRED_QUERIES',
+            limit: 50,
+          });
+        } else if (term.trim() === '') {
           response = await chrome.runtime.sendMessage({
             type: 'GET_RECENT_QUERIES',
             limit: 50,
@@ -78,8 +89,8 @@ function TabApp() {
 
         if (response?.queries) {
           setQueries(response.queries);
-          setOffset(term.trim() === '' ? 50 : 0);
-          setHasMore(response.queries.length === 50);
+          setOffset(term.trim() === '' && !showStarredOnly ? 50 : 0);
+          setHasMore(response.queries.length === 50 && !showStarredOnly);
         } else {
           setQueries([]);
           setOffset(0);
@@ -94,7 +105,7 @@ function TabApp() {
         setSearching(false);
       }
     },
-    [loading]
+    [loading, showStarredOnly]
   );
 
   useEffect(() => {
@@ -107,6 +118,12 @@ function TabApp() {
       performSearch(debouncedSearchTerm);
     }
   }, [debouncedSearchTerm, performSearch]);
+
+  useEffect(() => {
+    if (!loading) {
+      performSearch(debouncedSearchTerm, true); // Pass true to indicate this is a filter change
+    }
+  }, [showStarredOnly, performSearch, loading, debouncedSearchTerm]);
 
   const loadInitialData = async () => {
     try {
@@ -141,7 +158,7 @@ function TabApp() {
   };
 
   const loadMoreQueries = async () => {
-    if (loadingMore || !hasMore) return;
+    if (loadingMore || !hasMore || showStarredOnly) return;
 
     setLoadingMore(true);
     try {
@@ -241,6 +258,40 @@ function TabApp() {
     setSelectedQuery(null);
   };
 
+  const handleStarClick = async (queryId: number) => {
+    try {
+      const response = await chrome.runtime.sendMessage({
+        type: 'TOGGLE_QUERY_STARRED',
+        queryId: queryId,
+      });
+
+      if (response?.success) {
+        setQueries(prev => prev.map(q => {
+          if (q.id === queryId) {
+            return {
+              ...q,
+              starred_at: q.starred_at ? undefined : new Date().toISOString(),
+            };
+          }
+          return q;
+        }));
+        
+        if (selectedQuery?.id === queryId) {
+          setSelectedQuery(prev => prev ? {
+            ...prev,
+            starred_at: prev.starred_at ? undefined : new Date().toISOString(),
+          } : null);
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling starred status:', error);
+    }
+  };
+
+  const handleToggleStarredFilter = () => {
+    setShowStarredOnly(prev => !prev);
+  };
+
   if (loading) {
     return (
       <div style={{ 
@@ -271,9 +322,12 @@ function TabApp() {
         sqliteStatus={sqliteStatus}
         loadingMore={loadingMore}
         hasMore={hasMore}
+        showStarredOnly={showStarredOnly}
         onSearchTermChange={setSearchTerm}
         onQueryClick={handleQueryClick}
         onLoadMore={loadMoreQueries}
+        onStarClick={handleStarClick}
+        onToggleStarredFilter={handleToggleStarredFilter}
       />
       
       {/* Query Detail Modal */}

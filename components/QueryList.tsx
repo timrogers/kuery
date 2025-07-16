@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import styles from '../popup.module.css';
 import CopyButton from './CopyButton';
 
@@ -11,6 +11,7 @@ interface QueryData {
   last_used_at: string;
   created_at: string;
   description: string;
+  starred_at?: string;
 }
 
 interface QueryListProps {
@@ -18,8 +19,10 @@ interface QueryListProps {
   searchTerm: string;
   loadingMore: boolean;
   hasMore: boolean;
-  onQueryClick: (query: QueryData) => void;
+  scrollPosition?: number;
+  onQueryClick: (query: QueryData, scrollTop: number) => void;
   onLoadMore: () => void;
+  onStarClick: (queryId: number) => void;
   isFullHeight?: boolean;
 }
 
@@ -28,10 +31,21 @@ const QueryList: React.FC<QueryListProps> = ({
   searchTerm,
   loadingMore,
   hasMore,
+  scrollPosition = 0,
   onQueryClick,
   onLoadMore,
+  onStarClick,
   isFullHeight = false,
 }) => {
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Restore scroll position when component mounts or scrollPosition changes
+  useEffect(() => {
+    if (scrollContainerRef.current && scrollPosition > 0) {
+      scrollContainerRef.current.scrollTop = scrollPosition;
+    }
+  }, [scrollPosition]);
+
   if (queries.length === 0) {
     return (
       <div
@@ -66,6 +80,7 @@ const QueryList: React.FC<QueryListProps> = ({
         {searchTerm ? 'Search Results' : 'Recent Queries'}
       </h4>
       <div
+        ref={scrollContainerRef}
         style={{ 
           maxHeight: isFullHeight ? 'none' : 300, 
           height: isFullHeight ? '100%' : 'auto',
@@ -86,7 +101,7 @@ const QueryList: React.FC<QueryListProps> = ({
         {queries.map(query => (
           <div
             key={query.id}
-            onClick={() => onQueryClick(query)}
+            onClick={() => onQueryClick(query, scrollContainerRef.current?.scrollTop || 0)}
             className={styles.queryItem}
           >
             <div
@@ -116,6 +131,23 @@ const QueryList: React.FC<QueryListProps> = ({
               <div
                 style={{ display: 'flex', alignItems: 'center', gap: '4px' }}
               >
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onStarClick(query.id);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: '14px',
+                    padding: '2px 4px',
+                    color: query.starred_at ? '#fbbf24' : '#d1d5db',
+                  }}
+                  title={query.starred_at ? 'Remove from favorites' : 'Add to favorites'}
+                >
+                  ★
+                </button>
                 <CopyButton
                   textToCopy={query.query}
                   style={{

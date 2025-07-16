@@ -13,6 +13,7 @@ interface QueryData {
   last_used_at: string;
   created_at: string;
   description: string;
+  starred_at?: string;
 }
 
 interface MainScreenProps {
@@ -31,9 +32,13 @@ interface MainScreenProps {
   } | null;
   loadingMore: boolean;
   hasMore: boolean;
+  showStarredOnly: boolean;
+  scrollPosition: number;
   onSearchTermChange: (term: string) => void;
-  onQueryClick: (query: QueryData) => void;
+  onQueryClick: (query: QueryData, scrollTop: number) => void;
   onLoadMore: () => void;
+  onStarClick: (queryId: number) => void;
+  onToggleStarredFilter: () => void;
 }
 
 const MainScreen: React.FC<MainScreenProps> = ({
@@ -44,9 +49,13 @@ const MainScreen: React.FC<MainScreenProps> = ({
   sqliteStatus,
   loadingMore,
   hasMore,
+  showStarredOnly,
+  scrollPosition,
   onSearchTermChange,
   onQueryClick,
   onLoadMore,
+  onStarClick,
+  onToggleStarredFilter,
 }) => {
   return (
     <div
@@ -64,13 +73,37 @@ const MainScreen: React.FC<MainScreenProps> = ({
         queries={queries}
       />
 
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+        <button
+          onClick={onToggleStarredFilter}
+          style={{
+            background: showStarredOnly ? '#3b82f6' : '#f3f4f6',
+            color: showStarredOnly ? 'white' : '#374151',
+            border: 'none',
+            padding: '6px 12px',
+            borderRadius: '6px',
+            cursor: 'pointer',
+            fontSize: '12px',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+        >
+          <span style={{ fontSize: '14px' }}>★</span>
+          {showStarredOnly ? 'Show All' : 'Starred Only'}
+        </button>
+      </div>
+
       <QueryList
         queries={queries}
         searchTerm={searchTerm}
         loadingMore={loadingMore}
         hasMore={hasMore}
+        scrollPosition={scrollPosition}
         onQueryClick={onQueryClick}
         onLoadMore={onLoadMore}
+        onStarClick={onStarClick}
       />
 
       <div
