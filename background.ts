@@ -1,6 +1,6 @@
 // Background service worker for Kuery extension
 import OpenAI from 'openai';
-import initSqlJs from 'sql.js';
+import initSqlJs, { Database, SqlJsStatic } from 'sql.js';
 
 // Function to generate query description using GitHub Models
 async function generateQueryDescription(query: string): Promise<string | null> {
@@ -94,15 +94,15 @@ interface KustoQueryData {
   cluster: string;
   url: string;
   timestamp: string;
-  requestBody?: any;
+  requestBody?: Record<string, unknown>;
   responsePreview?: {
     hasResults: boolean;
     resultCount: number;
   } | null;
 }
 
-let SQL: any = null;
-let db: any = null;
+let SQL: SqlJsStatic | null = null;
+let db: Database | null = null;
 let sqliteAvailable = false;
 let initializationError: string | null = null;
 const migrationStatus: {
@@ -196,15 +196,15 @@ function createTables() {
 interface Migration {
   version: number;
   description: string;
-  up: (db: any) => void;
-  down?: (db: any) => void;
+  up: (db: Database) => void;
+  down?: () => void;
 }
 
 const migrations: Migration[] = [
   {
     version: 1,
     description: 'Add runs_count, last_used_at, and description columns',
-    up: (db: any) => {
+    up: (db: Database) => {
       // Check if columns exist before adding them
       const tableInfo = db.exec('PRAGMA table_info(queries)');
       const columns =
@@ -235,7 +235,7 @@ const migrations: Migration[] = [
         );
       }
     },
-    down: (_db: any) => {
+    down: () => {
       // SQLite doesn't support DROP COLUMN, so this would require recreating the table
       console.warn(
         'Kuery: Downgrade from migration 1 not supported (SQLite limitation)'
@@ -245,7 +245,7 @@ const migrations: Migration[] = [
   {
     version: 2,
     description: 'Add starred_at column for query favorites',
-    up: (db: any) => {
+    up: (db: Database) => {
       // Check if starred_at column exists before adding it
       const tableInfo = db.exec('PRAGMA table_info(queries)');
       const columns =
@@ -257,7 +257,7 @@ const migrations: Migration[] = [
         db.exec('ALTER TABLE queries ADD COLUMN starred_at DATETIME');
       }
     },
-    down: (_db: any) => {
+    down: () => {
       // SQLite doesn't support DROP COLUMN, so this would require recreating the table
       console.warn(
         'Kuery: Downgrade from migration 2 not supported (SQLite limitation)'
@@ -581,7 +581,7 @@ async function getRecentQueries(limit: number = 10, offset: number = 0) {
     const rows = result[0].values;
 
     const queries = rows.map(row => {
-      const query: Record<string, any> = {};
+      const query: Record<string, unknown> = {};
       columns.forEach((col, index) => {
         query[col] = row[index];
       });
@@ -807,7 +807,7 @@ async function getStarredQueries(limit: number = 50) {
     const rows = result[0].values;
 
     const queries = rows.map(row => {
-      const query: Record<string, any> = {};
+      const query: Record<string, unknown> = {};
       columns.forEach((col, index) => {
         query[col] = row[index];
       });
@@ -1089,33 +1089,37 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     try {
       switch (message.type) {
-        case 'SAVE_QUERY':
+        case 'SAVE_QUERY': {
           const success = await saveQuery(message.data);
           sendResponse({ success });
           break;
+        }
 
-        case 'GET_QUERIES_COUNT':
+        case 'GET_QUERIES_COUNT': {
           const count = await getQueriesCount();
           sendResponse({ count });
           break;
+        }
 
-        case 'GET_RECENT_QUERIES':
+        case 'GET_RECENT_QUERIES': {
           const queries = await getRecentQueries(
             message.limit || 10,
             message.offset || 0
           );
           sendResponse({ queries });
           break;
+        }
 
-        case 'SEARCH_QUERIES':
+        case 'SEARCH_QUERIES': {
           const searchResults = await searchQueries(
             message.searchTerm,
             message.limit || 50
           );
           sendResponse({ queries: searchResults });
           break;
+        }
 
-        case 'DELETE_QUERY':
+        case 'DELETE_QUERY': {
           console.log(
             'Kuery Background: Processing DELETE_QUERY for ID:',
             message.queryId
@@ -1124,8 +1128,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('Kuery Background: Delete result:', deleteSuccess);
           sendResponse({ success: deleteSuccess });
           break;
+        }
 
-        case 'UPDATE_QUERY_DESCRIPTION':
+        case 'UPDATE_QUERY_DESCRIPTION': {
           console.log(
             'Kuery Background: Processing UPDATE_QUERY_DESCRIPTION for ID:',
             message.queryId
@@ -1137,8 +1142,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('Kuery Background: Update result:', updateSuccess);
           sendResponse({ success: updateSuccess });
           break;
+        }
 
-        case 'TOGGLE_QUERY_STARRED':
+        case 'TOGGLE_QUERY_STARRED': {
           console.log(
             'Kuery Background: Processing TOGGLE_QUERY_STARRED for ID:',
             message.queryId
@@ -1147,11 +1153,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           console.log('Kuery Background: Toggle starred result:', toggleSuccess);
           sendResponse({ success: toggleSuccess });
           break;
+        }
 
-        case 'GET_STARRED_QUERIES':
+        case 'GET_STARRED_QUERIES': {
           const starredQueries = await getStarredQueries(message.limit || 50);
           sendResponse({ queries: starredQueries });
           break;
+        }
 
         case 'GET_SQLITE_STATUS':
           sendResponse({
@@ -1161,7 +1169,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           });
           break;
 
-        case 'EXPORT_DATABASE':
+        case 'EXPORT_DATABASE': {
           const exportResult = await exportDatabase();
           if (exportResult.success && exportResult.data) {
             // Convert Uint8Array to Array for message passing
@@ -1176,13 +1184,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
           }
           break;
+        }
 
-        case 'GET_AVAILABLE_BACKUPS':
+        case 'GET_AVAILABLE_BACKUPS': {
           const backupsResult = await getAvailableBackups();
           sendResponse(backupsResult);
           break;
+        }
 
-        case 'EXPORT_BACKUP':
+        case 'EXPORT_BACKUP': {
           const backupResult = await exportBackup(message.backupKey);
           if (backupResult.success && backupResult.data) {
             // Convert Uint8Array to Array for message passing
@@ -1197,8 +1207,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
           }
           break;
+        }
 
-        case 'IMPORT_DATABASE':
+        case 'IMPORT_DATABASE': {
           try {
             // Convert Array back to Uint8Array
             const importData = new Uint8Array(message.data);
@@ -1212,13 +1223,15 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             });
           }
           break;
+        }
 
-        case 'TEST_GITHUB_TOKEN':
+        case 'TEST_GITHUB_TOKEN': {
           console.log('Kuery Background: Processing TEST_GITHUB_TOKEN');
           const testResult = await testGitHubToken(message.token);
           console.log('Kuery Background: Token test result:', testResult);
           sendResponse(testResult);
           break;
+        }
 
         default:
           console.log('Kuery Background: Unknown message type:', message.type);
