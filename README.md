@@ -1,5 +1,7 @@
 # Kuery
 
+<img width="382" height="620" alt="Kuery extension popup screenshot" src="https://github.com/user-attachments/assets/241dbf24-d11e-4d93-8879-99d1a8c2751e" />
+
 A Chrome extension for automatically tracking and managing your Azure Data Explorer (Kusto) queries, with AI-powered summaries.
 
 ## What it does
@@ -16,7 +18,6 @@ Kuery automatically captures and stores your Azure Data Explorer queries in a lo
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Chrome browser for development and testing
 
 ### Installation
 
@@ -43,9 +44,9 @@ npm run build
    - Enable "Developer mode" (toggle in top right)
    - Click "Load unpacked" and select the `build/chrome-mv3-prod` folder
 
-### Usage
+## Usage
 
-1. Open the extension's popup, click Settings, then follow the instructions to create, test and save your GitHub Models token. The extension will use this to create AI-generated query descriptions, completely free of charge ✨
+1. Open the extension's popup, click "Settings", then follow the instructions to create, test and save your GitHub Models token. The extension will use this to create AI-generated query descriptions, completely free of charge ✨
 1. Run a query in Azure Data Explorer
 1. Open the popup again. Your query will appear 🎉
 
@@ -91,11 +92,6 @@ The extension automatically creates and manages a SQLite database. You can:
 - **Export Database**: Download your query history as a `.sqlite` file
 - **Import Database**: Replace your current database with one from another device
 - **View Backups**: Access automatically created backups before migrations or imports
-
-## Browser Compatibility
-
-- Chrome 88+ (Manifest V3 support required)
-- Microsoft Edge 88+ (Chromium-based)
 
 ## Privacy
 
