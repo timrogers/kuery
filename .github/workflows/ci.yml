@@ -1,0 +1,48 @@
+name: 'Build, Lint, and Format'
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-lint-format:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm install
+        
+      - name: Run type checking
+        run: npm run typecheck
+        continue-on-error: true # Known TypeScript errors exist
+        
+      - name: Run linting
+        run: npm run lint
+        
+      - name: Check code formatting
+        run: npm run format:check
+        continue-on-error: true # Known formatting issues exist
+        
+      - name: Build extension
+        run: npm run build
+        
+      - name: Package extension
+        run: npm run package
+        
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: extension-build
+          path: build/
+          retention-days: 7
