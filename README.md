@@ -25,7 +25,7 @@ Kuery automatically captures and stores your Azure Data Explorer queries in a lo
 1. Clone the repository:
 
 ```bash
-git clone https://github.com/timrogers/kuery-extension.git
+git clone https://github.com/timrogers/kuery.git
 ```
 
 2. Install dependencies:
