@@ -2,6 +2,7 @@
 
 <img width="382" height="620" alt="Kuery extension popup screenshot" src="https://github.com/user-attachments/assets/241dbf24-d11e-4d93-8879-99d1a8c2751e" />
 
+
 A Chrome extension for automatically tracking and managing your Azure Data Explorer (Kusto) queries, with AI-powered summaries.
 
 ## What it does
