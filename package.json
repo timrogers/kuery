@@ -17,7 +17,7 @@
   },
   "dependencies": {
     "@parcel/watcher": "^2.5.1",
-    "openai": "^5.9.0",
+    "openai": "^5.11.0",
     "plasmo": "0.90.5",
     "react": "19.1.0",
     "react-dom": "19.1.0",
