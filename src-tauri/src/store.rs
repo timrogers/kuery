@@ -265,6 +265,137 @@ impl Store {
             .flatten();
         Ok(v)
     }
+
+    /// Import rows from a legacy Kuery `.sqlite` (the Chrome extension's
+    /// sql.js-backed format). Existing rows are merged: run counts add,
+    /// timestamps widen, descriptions/stars are filled in if missing.
+    pub fn import_legacy(&self, source: &Path) -> Result<ImportSummary> {
+        let src = rusqlite::Connection::open_with_flags(
+            source,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .with_context(|| format!("opening legacy db {}", source.display()))?;
+
+        // Discover which optional columns exist (legacy ran migrations lazily).
+        let mut have = std::collections::HashSet::<String>::new();
+        let mut info = src.prepare("PRAGMA table_info(queries)")?;
+        let rows = info.query_map([], |r| r.get::<_, String>(1))?;
+        for r in rows { have.insert(r?); }
+
+        if !have.contains("query_text") {
+            anyhow::bail!("file does not look like a Kuery legacy database");
+        }
+
+        let pick = |col: &str, fallback_sql: &str| -> String {
+            if have.contains(col) { col.to_string() } else { fallback_sql.to_string() }
+        };
+        let select_sql = format!(
+            "SELECT
+                query_text,
+                {cluster}    AS cluster,
+                {database}   AS database_name,
+                {description} AS description,
+                {runs_count} AS runs_count,
+                {created_at} AS created_at,
+                {last_used}  AS last_used_at,
+                {starred_at} AS starred_at
+             FROM queries",
+            cluster     = pick("cluster_name", "NULL"),
+            database    = pick("database_name", "NULL"),
+            description = pick("description", "NULL"),
+            runs_count  = pick("runs_count", "1"),
+            created_at  = pick("created_at", "CURRENT_TIMESTAMP"),
+            last_used   = pick("last_used_at", "CURRENT_TIMESTAMP"),
+            starred_at  = pick("starred_at", "NULL"),
+        );
+
+        let mut stmt = src.prepare(&select_sql)?;
+        let mut rows = stmt.query([])?;
+
+        let mut summary = ImportSummary::default();
+        let conn = self.pool.get()?;
+        let tx = conn.unchecked_transaction()?;
+        while let Some(r) = rows.next()? {
+            let query_text: String = r.get(0)?;
+            let cluster: Option<String> = r.get(1)?;
+            let database: Option<String> = r.get(2)?;
+            let description: Option<String> = r.get(3)?;
+            let runs_count: i64 = r.get::<_, Option<i64>>(4)?.unwrap_or(1).max(1);
+            let created_at: Option<String> = r.get(5)?;
+            let last_used_at: Option<String> = r.get(6)?;
+            let starred_at: Option<String> = r.get(7)?;
+
+            let normalized = normalize_query(&query_text);
+            if normalized.is_empty() { summary.skipped += 1; continue; }
+            let hash = compute_hash(
+                &normalized,
+                cluster.as_deref().unwrap_or(""),
+                database.as_deref().unwrap_or(""),
+            );
+            let first = created_at.unwrap_or_else(|| Utc::now().to_rfc3339());
+            let last  = last_used_at.unwrap_or_else(|| first.clone());
+            let starred = starred_at.is_some();
+            let desc = description.filter(|d| !d.is_empty() && d != "Untitled");
+
+            let existing: Option<(i64, i64, String, String, Option<String>, i64)> = tx
+                .query_row(
+                    "SELECT id, run_count, first_seen_at, last_seen_at, description, starred FROM queries WHERE query_hash = ?1",
+                    params![hash],
+                    |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+                )
+                .optional()?;
+
+            match existing {
+                Some((id, run_count, cur_first, cur_last, cur_desc, cur_starred)) => {
+                    let new_first = std::cmp::min(cur_first.clone(), first.clone());
+                    let new_last  = std::cmp::max(cur_last.clone(),  last.clone());
+                    let new_run   = run_count + runs_count;
+                    let new_desc  = cur_desc.or(desc);
+                    let new_starred = if cur_starred != 0 || starred { 1 } else { 0 };
+                    tx.execute(
+                        "UPDATE queries
+                            SET run_count = ?2,
+                                first_seen_at = ?3,
+                                last_seen_at  = ?4,
+                                description   = ?5,
+                                starred       = ?6
+                          WHERE id = ?1",
+                        params![id, new_run, new_first, new_last, new_desc, new_starred],
+                    )?;
+                    summary.merged += 1;
+                }
+                None => {
+                    tx.execute(
+                        "INSERT INTO queries
+                          (query_text, cluster, \"database\", description, starred, run_count, source, first_seen_at, last_seen_at, query_hash)
+                          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                        params![
+                            query_text,
+                            cluster,
+                            database,
+                            desc,
+                            starred as i64,
+                            runs_count,
+                            "legacy-import",
+                            first,
+                            last,
+                            hash,
+                        ],
+                    )?;
+                    summary.imported += 1;
+                }
+            }
+        }
+        tx.commit()?;
+        Ok(summary)
+    }
+}
+
+#[derive(Debug, Default, Clone, Serialize)]
+pub struct ImportSummary {
+    pub imported: u64,
+    pub merged: u64,
+    pub skipped: u64,
 }
 
 fn row_to_query(r: &Row<'_>) -> rusqlite::Result<Query> {
@@ -380,5 +511,56 @@ mod tests {
         let q = s.get(r.id).unwrap().unwrap();
         assert!(q.starred);
         assert_eq!(q.description.as_deref(), Some("counts T"));
+    }
+
+    #[test]
+    fn import_legacy_merges_and_inserts() {
+        let dir = tempdir().unwrap();
+        let legacy_path = dir.path().join("legacy.sqlite");
+        let lc = rusqlite::Connection::open(&legacy_path).unwrap();
+        lc.execute_batch(r#"
+            CREATE TABLE queries (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                query_text TEXT NOT NULL,
+                database_name TEXT,
+                cluster_name TEXT,
+                created_at DATETIME,
+                runs_count INTEGER DEFAULT 1,
+                last_used_at DATETIME,
+                description TEXT,
+                starred_at DATETIME
+            );
+            INSERT INTO queries(query_text, database_name, cluster_name, runs_count, created_at, last_used_at, description, starred_at)
+              VALUES ('StormEvents | take 5', 'Samples', 'help', 3, '2024-01-01T00:00:00Z', '2024-02-01T00:00:00Z', 'top events', '2024-02-01T00:00:00Z');
+            INSERT INTO queries(query_text, database_name, cluster_name, runs_count, created_at, last_used_at, description)
+              VALUES ('PageViews | count', 'Samples', 'help', 1, '2024-03-01T00:00:00Z', '2024-03-01T00:00:00Z', 'Untitled');
+        "#).unwrap();
+        drop(lc);
+
+        let store = Store::open(&dir.path().join("kuery.sqlite")).unwrap();
+        // Pre-existing row that should merge.
+        store.ingest(&NewQuery {
+            query_text: "StormEvents | take 5".into(),
+            cluster: Some("help".into()),
+            database: Some("Samples".into()),
+            source: "manual".into(),
+        }).unwrap();
+
+        let summary = store.import_legacy(&legacy_path).unwrap();
+        assert_eq!(summary.imported, 1);
+        assert_eq!(summary.merged, 1);
+        assert_eq!(summary.skipped, 0);
+
+        let recent = store.list_recent(50).unwrap();
+        assert_eq!(recent.len(), 2);
+        let storm = recent.iter().find(|q| q.query_text.contains("StormEvents")).unwrap();
+        // 1 (manual) + 3 (legacy) = 4
+        assert_eq!(storm.run_count, 4);
+        assert!(storm.starred);
+        assert_eq!(storm.description.as_deref(), Some("top events"));
+
+        let pv = recent.iter().find(|q| q.query_text.contains("PageViews")).unwrap();
+        // "Untitled" should be filtered.
+        assert!(pv.description.is_none());
     }
 }

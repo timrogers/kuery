@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use tauri::{AppHandle, Manager, State};
 
-use crate::store::{NewQuery, Query, Store, UpdateQuery};
+use crate::store::{ImportSummary, NewQuery, Query, Store, UpdateQuery};
 
 #[derive(Serialize)]
 pub struct CommandError {
@@ -77,6 +77,9 @@ pub fn get_setting(store: State<'_, Store>, key: String) -> CmdResult<Option<Str
 #[tauri::command]
 pub fn ingest_query(store: State<'_, Store>, query: NewQuery) -> CmdResult<i64> {
     let r = store.ingest(&query)?;
+    if r.created {
+        crate::ai::describe_in_background(store.inner().clone(), r.id, query.query_text.clone());
+    }
     Ok(r.id)
 }
 
@@ -90,14 +93,23 @@ pub fn export_database(app: AppHandle, dest_path: String) -> CmdResult<()> {
 }
 
 #[tauri::command]
-pub fn import_database(app: AppHandle, source_path: String) -> CmdResult<()> {
+pub fn import_database(
+    store: State<'_, Store>,
+    app: AppHandle,
+    source_path: String,
+) -> CmdResult<ImportSummary> {
+    // Belt-and-braces: keep a copy of the live db before merging.
     let dest = db_path(&app)?;
-    let backup = dest.with_extension("sqlite.bak");
     if dest.exists() {
-        std::fs::copy(&dest, &backup)?;
+        let backup = dest.with_extension("sqlite.bak");
+        std::fs::copy(&dest, &backup).map_err(|e| CommandError {
+            message: format!("backup failed: {e}"),
+        })?;
     }
-    std::fs::copy(&source_path, &dest)?;
-    Ok(())
+    let summary = store
+        .import_legacy(std::path::Path::new(&source_path))
+        .map_err(|e| CommandError { message: e.to_string() })?;
+    Ok(summary)
 }
 
 fn db_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {

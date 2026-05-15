@@ -43,8 +43,11 @@ export function SettingsModal({ onClose, onChanged }: Props) {
       filters: [{ name: "SQLite", extensions: ["sqlite"] }],
     });
     if (!src || typeof src !== "string") return;
-    await importDatabase(src);
-    setStatus("Import complete. Restart Kuery to see imported queries.");
+    const summary = await importDatabase(src);
+    setStatus(
+      `Imported ${summary.imported} new, merged ${summary.merged}` +
+        (summary.skipped ? `, skipped ${summary.skipped}` : ""),
+    );
     onChanged();
   }
 

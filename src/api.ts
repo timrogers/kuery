@@ -51,6 +51,12 @@ export async function exportDatabase(destPath: string): Promise<void> {
   return invoke<void>("export_database", { destPath });
 }
 
-export async function importDatabase(sourcePath: string): Promise<void> {
-  return invoke<void>("import_database", { sourcePath });
+export interface ImportSummary {
+  imported: number;
+  merged: number;
+  skipped: number;
+}
+
+export async function importDatabase(sourcePath: string): Promise<ImportSummary> {
+  return invoke<ImportSummary>("import_database", { sourcePath });
 }

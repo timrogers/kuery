@@ -66,6 +66,9 @@ async fn ingest(
         .store
         .ingest(&payload)
         .map_err(|e| ApiError::bad_request(e.to_string()))?;
+    if result.created {
+        crate::ai::describe_in_background(state.store.clone(), result.id, payload.query_text.clone());
+    }
     Ok((
         StatusCode::CREATED,
         Json(json!({
