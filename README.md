@@ -5,29 +5,51 @@ A small desktop app that watches the Kusto queries you run — in
 that talk to a Kusto MCP server — and saves them locally so you can search
 them, star the good ones, and feed them back to the next agent.
 
-This is the Rust/Tauri rewrite of the original
-[`kuery-legacy`](https://github.com/timrogers/kuery) Chrome extension. The
-storage, search, UI, AI summaries, and MCP server now all live in one native
-process; the browser extension and the CLI hook are tiny shims that just
-forward queries over HTTP.
+Built with Rust and Tauri 2. This is the rewrite of the original
+[`kuery-legacy`](https://github.com/timrogers/kuery) Chrome extension —
+storage, search, UI, AI summaries, and the MCP server now all live in one
+native process. The browser extension and the Copilot CLI plugin are thin
+shims that just forward queries over HTTP.
+
+## Highlights
+
+- **Captures everything you run** — from the ADX web UI (via a Chrome
+  extension) and from agents using a Kusto MCP server (via a Copilot CLI
+  plugin).
+- **Searches everything you've ever run** — SQLite + FTS5 full-text search
+  across the query, cluster, database, and an auto-generated description.
+- **Smart search** with the GitHub Copilot CLI: ask in plain English ("the
+  one that joined PRs to repo nwo last week") and let the agent pick.
+- **Re-exposes your history as MCP tools** so the next agent you run can
+  recall and re-use anything you've saved.
+- **Stays out of the way** — tray-only on macOS, optional start-at-login,
+  and a window you can close without losing the background server.
 
 ## Architecture
 
-```
-                ┌──────────────────────────────────────────────────────┐
-                │                  Kuery desktop app                    │
-                │                                                      │
-   ADX page ─►  │   HTTP ingest (POST /v1/queries)                     │
-   (extension)  │            │                                         │
-                │            ▼                                         │
-   Copilot CLI  │   Store (SQLite + FTS5)  ◄── React UI (Tauri IPC)    │
-   (hook) ────► │            │                                         │
-                │            │   ▲                                     │
-                │            ▼   │                                     │
-                │   AI describer ─► Copilot CLI (gpt-5.4-mini)         │
-                │                                                      │
-                │   MCP server (POST /mcp, JSON-RPC)  ◄─── any agent   │
-                └──────────────────────────────────────────────────────┘
+```mermaid
+flowchart LR
+    ADX[ADX web UI]
+    CLI[Copilot CLI / agents]
+    EXT[Chrome extension]
+    PLG[Copilot CLI plugin]
+
+    subgraph Kuery["Kuery desktop app (Rust + Tauri)"]
+        HTTP["axum HTTP server<br/>127.0.0.1:47821"]
+        STORE[("SQLite + FTS5<br/>store")]
+        UI["React UI<br/>(Tauri IPC)"]
+        AI["AI describer<br/>(Copilot CLI)"]
+        MCP["MCP server<br/>(JSON-RPC over HTTP)"]
+    end
+
+    AGENT[Any MCP-aware agent]
+
+    ADX --> EXT --> HTTP
+    CLI --> PLG --> HTTP
+    HTTP --> STORE
+    STORE <--> UI
+    STORE --> AI --> STORE
+    AGENT --> MCP --> STORE
 ```
 
 - **Rust backend** (`src-tauri/`): SQLite store with FTS5 full-text search,
@@ -68,22 +90,56 @@ Available to any MCP client that can talk to a Streamable HTTP transport at
 - `list_recent_queries(limit?)`
 - `list_starred_queries(limit?)`
 
-## Running
+## Building from source
 
-Prerequisites: Node 20+, pnpm, Rust 1.80+, the Tauri 2 toolchain.
+Prerequisites:
+
+- **Node 20+** and **pnpm**
+- **Rust 1.80+** (stable)
+- The **Tauri 2 prerequisites** for your platform — see
+  [tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/).
+  On macOS that's just Xcode command line tools; Linux needs the
+  `webkit2gtk` dev packages.
+
+Clone and install:
 
 ```bash
+git clone https://github.com/timrogers/kuery.git
+cd kuery
 pnpm install
+```
+
+### Run in development
+
+```bash
 pnpm tauri dev
 ```
 
-The desktop window opens; the HTTP server binds to `127.0.0.1:47821` as
-soon as the app is up. To install the optional pieces:
+The window opens and the HTTP server binds to `127.0.0.1:47821` as soon as
+the app is up. The first build takes a few minutes; subsequent runs
+hot-reload the React UI and recompile the Rust backend on change.
 
-- **Chrome extension** — see `chrome-extension/README.md`.
+### Build a release binary
+
+```bash
+pnpm tauri build
+```
+
+Bundles land in `src-tauri/target/release/bundle/` — a `.app` (and `.dmg`)
+on macOS, `.deb`/`.AppImage` on Linux, or `.msi`/`.exe` on Windows. Linux
+and Windows aren't tested yet but should work; macOS is the primary
+target.
+
+### Install the optional shims
+
+- **Chrome extension** for capturing ADX — see
+  [`chrome-extension/README.md`](chrome-extension/README.md). The path to
+  the local checkout is shown on the welcome screen with a copy button so
+  you can drop it straight into `chrome://extensions`.
 - **Copilot CLI plugin** — `copilot plugin install timrogers/kuery:plugin`
-  (see `plugin/README.md`). The same install command, plus a copy
-  button, lives in **Settings → Copilot CLI plugin**.
+  (or point it at your local `plugin/` directory; see
+  [`plugin/README.md`](plugin/README.md)). The exact install command,
+  with a copy button, also lives in **Settings → Copilot CLI plugin**.
 
 ## Debugging
 
@@ -122,6 +178,18 @@ session (`gpt-5.4-mini`) and asks it to write a one-line summary, which is
 saved on the row and indexed alongside the query text for search. If the
 Copilot CLI isn't installed or the user isn't logged in the step is skipped
 silently — the query is still captured.
+
+## Tests
+
+Backend has a Rust test suite covering the store, ingest validation, MCP
+JSON-RPC dispatch, and the legacy import path:
+
+```bash
+cd src-tauri && cargo test
+```
+
+There is no front-end test suite yet — `pnpm build` runs `tsc` as a type
+check.
 
 ## License
 
