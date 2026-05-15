@@ -512,6 +512,46 @@ input:focus {
 .empty-state-card .setup-step-body > .hint:last-child {
   margin-bottom: 0;
 }
+
+.welcome-backdrop {
+  z-index: 50;
+}
+.welcome-modal {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  width: min(720px, 94vw);
+  max-height: 90vh;
+  overflow-y: auto;
+}
+.welcome-modal .empty-state {
+  padding: 16px;
+}
+.welcome-modal .empty-state-card {
+  border: none;
+  padding: 16px 8px 8px 8px;
+  width: 100%;
+  box-shadow: none;
+}
+.welcome-modal-close {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  background: transparent;
+  border: none;
+  font-size: 22px;
+  line-height: 1;
+  cursor: pointer;
+  color: var(--text-muted);
+  padding: 4px 8px;
+  border-radius: 6px;
+  z-index: 1;
+}
+.welcome-modal-close:hover {
+  background: var(--bg-subtle);
+  color: var(--text);
+}
 .empty-state-card .cli-snippet {
   flex: 1;
   min-width: 0;

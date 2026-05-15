@@ -8,6 +8,7 @@ import {
   importDatabase,
   type DebugInfo,
 } from "../api";
+import { EmptyState } from "./EmptyState";
 
 interface Props {
   onClose: () => void;
@@ -18,6 +19,7 @@ export function SettingsModal({ onClose, onChanged }: Props) {
   const [autostart, setAutostart] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [debug, setDebug] = useState<DebugInfo | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
 
   useEffect(() => {
     isEnabled()
@@ -186,14 +188,38 @@ export function SettingsModal({ onClose, onChanged }: Props) {
         <section>
           <h3>Help</h3>
           <p className="hint">
-            Need to walk through setup again? Delete all your queries (or
-            install Kuery on a fresh machine) and the welcome guide reappears
-            here as the empty state.
+            Need to walk through setup again? You can re-open the welcome
+            guide any time.
           </p>
+          <div className="row">
+            <button onClick={() => setShowWelcome(true)}>
+              Show welcome guide
+            </button>
+          </div>
         </section>
 
         {status && <div className="status">{status}</div>}
       </div>
+      {showWelcome && (
+        <div
+          className="modal-backdrop welcome-backdrop"
+          onClick={() => setShowWelcome(false)}
+        >
+          <div
+            className="welcome-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              className="welcome-modal-close"
+              onClick={() => setShowWelcome(false)}
+              title="Close"
+            >
+              ×
+            </button>
+            <EmptyState />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
