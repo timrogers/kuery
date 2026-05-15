@@ -34,7 +34,9 @@ forward queries over HTTP.
   an axum HTTP server bound to `127.0.0.1:47821`, an embedded MCP server,
   and a background AI describer.
 - **React UI** (`src/`): two-pane query browser with debounce search, star
-  toggle, settings, and import/export.
+  toggle, settings, and import/export. Includes a **smart search** mode
+  (✨ toggle) that hands a natural-language prompt to the GitHub Copilot
+  CLI and returns matching saved queries.
 - **Chrome capture shim** (`chrome-extension/`): MV3 extension that
   intercepts ADX query requests and POSTs them to the local app.
 - **Copilot CLI plugin** (`plugin/`): one-line install (`copilot plugin

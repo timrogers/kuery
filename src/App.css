@@ -133,6 +133,32 @@ input:focus {
   border-bottom: 1px solid var(--border);
 }
 
+.smart-status {
+  background: var(--bg-subtle);
+  color: var(--text-muted);
+  padding: 8px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.smart-toggle {
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+}
+.smart-toggle:hover {
+  background: var(--bg-subtle);
+}
+.smart-toggle.smart-toggle-on {
+  background: #ddf4ff;
+  border-color: #54aeff;
+  color: #0969da;
+}
+
 .query-list {
   list-style: none;
   margin: 0;

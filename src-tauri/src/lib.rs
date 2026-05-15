@@ -1,4 +1,5 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+mod agent;
 mod ai;
 mod api;
 mod ipc;
@@ -154,6 +155,7 @@ pub fn run() {
             ipc::ingest_query,
             ipc::export_database,
             ipc::import_database,
+            ipc::agent_search,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

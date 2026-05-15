@@ -121,3 +121,16 @@ fn db_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
         .map_err(|e| CommandError { message: e.to_string() })?;
     Ok(dir.join("kuery.sqlite"))
 }
+
+#[tauri::command]
+pub async fn agent_search(
+    store: State<'_, Store>,
+    prompt: String,
+) -> CmdResult<crate::agent::AgentSearchResult> {
+    // Clone out of `State` so we can move into the spawned future without
+    // borrowing the request guard across await points.
+    let store = store.inner().clone();
+    crate::agent::search(store, prompt)
+        .await
+        .map_err(|e| CommandError { message: e.to_string() })
+}

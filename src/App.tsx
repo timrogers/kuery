@@ -5,6 +5,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { useDebounced } from "./hooks";
 import {
+  agentSearch,
   deleteQuery,
   getSetting,
   searchQueries,
@@ -16,6 +17,9 @@ import "./App.css";
 function App() {
   const [search, setSearch] = useState("");
   const [starredOnly, setStarredOnly] = useState(false);
+  const [smartMode, setSmartMode] = useState(false);
+  const [smartLoading, setSmartLoading] = useState(false);
+  const [smartMessage, setSmartMessage] = useState<string | null>(null);
   const [queries, setQueries] = useState<Query[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
@@ -31,6 +35,10 @@ function App() {
   }, []);
 
   const reload = useCallback(async () => {
+    // Smart-mode results are agent-selected and shouldn't be clobbered by
+    // the periodic FTS refresh below; let the smart-search submit handler
+    // own that result set until the user switches back to literal search.
+    if (smartMode) return;
     try {
       const rows = await searchQueries(debouncedSearch, starredOnly, 200);
       setQueries(rows);
@@ -43,13 +51,14 @@ function App() {
     } catch (e) {
       setError(String(e));
     }
-  }, [debouncedSearch, starredOnly, selectedId]);
+  }, [debouncedSearch, starredOnly, selectedId, smartMode]);
 
   useEffect(() => {
     reload();
-  }, [debouncedSearch, starredOnly]);
+  }, [debouncedSearch, starredOnly, smartMode]);
 
-  // Periodically refresh so newly captured queries appear without manual reload.
+  // Periodically refresh so newly captured queries appear without manual
+  // reload. Smart mode pauses this — see `reload`.
   useEffect(() => {
     const id = setInterval(reload, 5000);
     return () => clearInterval(id);
@@ -76,21 +85,83 @@ function App() {
     reload();
   }
 
+  function toggleSmartMode() {
+    setSmartMode((on) => {
+      const next = !on;
+      // Reset transient smart-mode state so the user gets a clean slate
+      // both when entering smart mode and when bailing back to FTS.
+      setSmartMessage(null);
+      setSearch("");
+      if (!next) {
+        setQueries([]);
+        setSelectedId(null);
+      }
+      return next;
+    });
+  }
+
+  async function runSmartSearch() {
+    const prompt = search.trim();
+    if (!prompt || smartLoading) return;
+    setSmartLoading(true);
+    setSmartMessage(null);
+    setError(null);
+    try {
+      const result = await agentSearch(prompt);
+      setQueries(result.queries);
+      setSelectedId(result.queries[0]?.id ?? null);
+      setSmartMessage(
+        result.queries.length === 0
+          ? "No matches — try rephrasing or switch off smart search."
+          : null,
+      );
+    } catch (e) {
+      setError(String(e));
+      setQueries([]);
+      setSelectedId(null);
+    } finally {
+      setSmartLoading(false);
+    }
+  }
+
   return (
     <div className="app">
       <header className="app-header">
         <div className="brand">Kuery</div>
         <input
           className="search-input"
-          placeholder="Search queries…"
+          placeholder={
+            smartMode
+              ? "Describe queries you're looking for, then press Enter…"
+              : "Search queries…"
+          }
           value={search}
           onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => {
+            if (smartMode && e.key === "Enter") {
+              e.preventDefault();
+              runSmartSearch();
+            }
+          }}
+          disabled={smartLoading}
         />
+        <button
+          type="button"
+          className={`smart-toggle${smartMode ? " smart-toggle-on" : ""}`}
+          onClick={toggleSmartMode}
+          title={
+            smartMode ? "Switch off smart search" : "Search with Copilot CLI"
+          }
+          aria-pressed={smartMode}
+        >
+          ✨ Smart
+        </button>
         <label className="filter-toggle">
           <input
             type="checkbox"
             checked={starredOnly}
             onChange={(e) => setStarredOnly(e.target.checked)}
+            disabled={smartMode}
           />
           Starred only
         </label>
@@ -98,6 +169,12 @@ function App() {
       </header>
 
       {error && <div className="error">{error}</div>}
+      {smartLoading && (
+        <div className="smart-status">Asking Copilot…</div>
+      )}
+      {smartMessage && !smartLoading && (
+        <div className="smart-status">{smartMessage}</div>
+      )}
 
       <div className="app-body">
         <aside className="sidebar">
@@ -118,7 +195,11 @@ function App() {
               onDelete={deleteSelected}
             />
           ) : (
-            <div className="empty">Select a query to see details.</div>
+            <div className="empty">
+              {smartMode
+                ? "Describe the queries you want and press Enter."
+                : "Select a query to see details."}
+            </div>
           )}
         </main>
       </div>

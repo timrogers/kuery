@@ -60,3 +60,12 @@ export interface ImportSummary {
 export async function importDatabase(sourcePath: string): Promise<ImportSummary> {
   return invoke<ImportSummary>("import_database", { sourcePath });
 }
+
+export interface AgentSearchResult {
+  queries: Query[];
+  assistant_message: string;
+}
+
+export async function agentSearch(prompt: string): Promise<AgentSearchResult> {
+  return invoke<AgentSearchResult>("agent_search", { prompt });
+}
