@@ -126,12 +126,6 @@ table when adding fields.
 
 - Use clear, descriptive messages explaining the *why*, not just the
   *what*. Subject line up to 72 chars; body wraps at 72.
-- Always include the trailer:
-
-  ```
-  Co-authored-by: Copilot <223556219+Copilot@users.noreply.github.com>
-  ```
-
 - Never rewrite history on shared branches.
 
 ## Don't
