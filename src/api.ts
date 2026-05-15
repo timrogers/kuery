@@ -94,3 +94,14 @@ export interface DebugInfo {
 export async function debugInfo(): Promise<DebugInfo> {
   return invoke<DebugInfo>("debug_info");
 }
+
+export interface CopilotCliStatus {
+  installed: boolean;
+  path: string | null;
+  version: string | null;
+  error: string | null;
+}
+
+export async function copilotCliStatus(): Promise<CopilotCliStatus> {
+  return invoke<CopilotCliStatus>("copilot_cli_status");
+}

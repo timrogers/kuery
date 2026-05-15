@@ -164,3 +164,8 @@ pub fn debug_info(paths: State<'_, crate::LogPaths>) -> CmdResult<DebugInfo> {
         chrome_extension_path: crate::chrome_extension_path(),
     })
 }
+
+#[tauri::command]
+pub async fn copilot_cli_status() -> CmdResult<crate::copilot_cli::CopilotCliStatus> {
+    Ok(crate::copilot_cli::check().await)
+}

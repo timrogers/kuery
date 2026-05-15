@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { debugInfo, type DebugInfo } from "../api";
+import { CopilotCliStatusBadge } from "./CopilotCliStatusBadge";
 
 export function EmptyState() {
   const [debug, setDebug] = useState<DebugInfo | null>(null);
@@ -143,6 +144,7 @@ export function EmptyState() {
                 Install the Kuery plugin so the agent's Kusto MCP queries
                 get captured here, and so it can search your saved queries:
               </p>
+              <CopilotCliStatusBadge variant="full" />
               <div className="row">
                 <code className="cli-snippet">{installCommand}</code>
                 <button onClick={copyInstall}>

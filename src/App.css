@@ -652,3 +652,75 @@ input.search-input:disabled {
   font-size: 12px;
   color: var(--text);
 }
+
+/* Copilot CLI status badge --------------------------------------------- */
+
+.cli-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  font-size: 13px;
+  border: 1px solid transparent;
+}
+
+.cli-status-checking {
+  background: rgba(127, 127, 127, 0.08);
+  color: var(--muted-fg, #888);
+  border-color: rgba(127, 127, 127, 0.2);
+}
+
+.cli-status-ok {
+  background: rgba(46, 160, 67, 0.1);
+  border-color: rgba(46, 160, 67, 0.35);
+  color: #2ea043;
+  flex-direction: row;
+  align-items: center;
+}
+
+.cli-status-missing {
+  background: rgba(218, 54, 51, 0.08);
+  border-color: rgba(218, 54, 51, 0.35);
+  color: #da3633;
+}
+
+.cli-status-headline {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.cli-status-headline strong {
+  font-weight: 600;
+}
+
+.cli-status-dot {
+  font-weight: 700;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  flex-shrink: 0;
+}
+
+.cli-status-hint {
+  margin: 0;
+  color: inherit;
+  opacity: 0.85;
+}
+
+.cli-status-error {
+  margin: 0;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.cli-status-recheck {
+  align-self: flex-start;
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+.cli-status-ok .cli-status-recheck {
+  margin-left: auto;
+}

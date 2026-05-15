@@ -9,6 +9,7 @@ import {
   type DebugInfo,
 } from "../api";
 import { EmptyState } from "./EmptyState";
+import { CopilotCliStatusBadge } from "./CopilotCliStatusBadge";
 
 interface Props {
   onClose: () => void;
@@ -150,6 +151,7 @@ export function SettingsModal({ onClose, onChanged }: Props) {
             Capture KQL run by AI agents and let them search your saved queries
             via MCP. Install with:
           </p>
+          <CopilotCliStatusBadge variant="compact" />
           <div className="row">
             <code className="cli-snippet">
               {debug?.install_command ?? "copilot plugin install timrogers/kuery:plugin"}

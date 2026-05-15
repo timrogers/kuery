@@ -7,6 +7,7 @@ compile_error!(
 mod agent;
 mod ai;
 mod api;
+mod copilot_cli;
 mod ipc;
 mod mcp;
 mod store;
@@ -249,6 +250,7 @@ pub fn run() {
             ipc::import_database,
             ipc::agent_search,
             ipc::debug_info,
+            ipc::copilot_cli_status,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
