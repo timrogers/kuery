@@ -3,7 +3,7 @@
   "name": "Kuery (capture shim)",
   "version": "0.2.0",
   "description": "Captures Kusto queries executed in Azure Data Explorer and forwards them to the Kuery desktop app over HTTP.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "alarms"],
   "host_permissions": [
     "https://dataexplorer.azure.com/*",
     "https://*.kusto.windows.net/*",
