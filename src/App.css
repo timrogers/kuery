@@ -372,6 +372,10 @@ input:focus {
 .modal .row input {
   flex: 1;
 }
+.modal .row + .row,
+.modal .row + .hint {
+  margin-top: 10px;
+}
 .modal .row .cli-snippet {
   flex: 1;
   display: block;
