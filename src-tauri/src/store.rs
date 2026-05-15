@@ -121,10 +121,15 @@ impl Store {
         Ok(Self { pool: Arc::new(pool) })
     }
 
-    pub fn ingest(&self, q: &NewQuery) -> Result<IngestResult> {
+    /// Ingest a query. Returns `None` if the query was filtered out (e.g.
+    /// Kusto control commands starting with `.`).
+    pub fn ingest(&self, q: &NewQuery) -> Result<Option<IngestResult>> {
         let normalized = normalize_query(&q.query_text);
         if normalized.is_empty() {
             anyhow::bail!("query_text is empty");
+        }
+        if is_control_command(&normalized) {
+            return Ok(None);
         }
         let hash = compute_hash(
             &normalized,
@@ -147,7 +152,7 @@ impl Store {
                 "UPDATE queries SET run_count = run_count + 1, last_seen_at = ?2 WHERE id = ?1",
                 params![id, now],
             )?;
-            Ok(IngestResult { id, created: false, run_count: run_count + 1 })
+            Ok(Some(IngestResult { id, created: false, run_count: run_count + 1 }))
         } else {
             conn.execute(
                 "INSERT INTO queries
@@ -156,7 +161,7 @@ impl Store {
                 params![q.query_text, q.cluster, q.database, q.source, now, hash],
             )?;
             let id = conn.last_insert_rowid();
-            Ok(IngestResult { id, created: true, run_count: 1 })
+            Ok(Some(IngestResult { id, created: true, run_count: 1 }))
         }
     }
 
@@ -413,6 +418,14 @@ fn row_to_query(r: &Row<'_>) -> rusqlite::Result<Query> {
     })
 }
 
+/// Kusto distinguishes management/control commands from queries by a leading
+/// '.', e.g. `.show tables` or `.create function`. These are noisy to capture
+/// (schema introspection, the editor itself, etc.) and never useful as
+/// reusable analytical queries, so we drop them at the front door.
+fn is_control_command(normalized_query: &str) -> bool {
+    normalized_query.starts_with('.')
+}
+
 fn normalize_query(s: &str) -> String {
     let mut out = String::with_capacity(s.len());
     let mut prev_ws = true;
@@ -473,14 +486,35 @@ mod tests {
             database: Some("Samples".into()),
             source: "extension".into(),
         };
-        let r1 = s.ingest(&q).unwrap();
+        let r1 = s.ingest(&q).unwrap().unwrap();
         assert!(r1.created);
         assert_eq!(r1.run_count, 1);
 
-        let r2 = s.ingest(&q).unwrap();
+        let r2 = s.ingest(&q).unwrap().unwrap();
         assert!(!r2.created);
         assert_eq!(r2.id, r1.id);
         assert_eq!(r2.run_count, 2);
+    }
+
+    #[test]
+    fn skips_kusto_control_commands() {
+        let (s, _d) = open_temp();
+        for q in [
+            ".show databases entities | where DatabaseName == 'hydro'",
+            ".show tables",
+            "  .create function f() { 1 }",
+        ] {
+            let r = s
+                .ingest(&NewQuery {
+                    query_text: q.into(),
+                    cluster: Some("c".into()),
+                    database: Some("d".into()),
+                    source: "extension".into(),
+                })
+                .unwrap();
+            assert!(r.is_none(), "expected control command to be skipped: {q}");
+        }
+        assert_eq!(s.list_recent(10).unwrap().len(), 0);
     }
 
     #[test]
@@ -506,7 +540,7 @@ mod tests {
         let r = s.ingest(&NewQuery {
             query_text: "T | count".into(),
             cluster: None, database: None, source: "manual".into(),
-        }).unwrap();
+        }).unwrap().unwrap();
         s.update(r.id, &UpdateQuery { starred: Some(true), description: Some(Some("counts T".into())) }).unwrap();
         let q = s.get(r.id).unwrap().unwrap();
         assert!(q.starred);

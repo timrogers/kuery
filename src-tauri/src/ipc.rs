@@ -75,12 +75,14 @@ pub fn get_setting(store: State<'_, Store>, key: String) -> CmdResult<Option<Str
 }
 
 #[tauri::command]
-pub fn ingest_query(store: State<'_, Store>, query: NewQuery) -> CmdResult<i64> {
-    let r = store.ingest(&query)?;
+pub fn ingest_query(store: State<'_, Store>, query: NewQuery) -> CmdResult<Option<i64>> {
+    let Some(r) = store.ingest(&query)? else {
+        return Ok(None);
+    };
     if r.created {
         crate::ai::describe_in_background(store.inner().clone(), r.id, query.query_text.clone());
     }
-    Ok(r.id)
+    Ok(Some(r.id))
 }
 
 #[tauri::command]

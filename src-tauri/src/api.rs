@@ -66,6 +66,11 @@ async fn ingest(
         .store
         .ingest(&payload)
         .map_err(|e| ApiError::bad_request(e.to_string()))?;
+    let Some(result) = result else {
+        // Filtered (e.g. control command). Acknowledge with 204 so the
+        // client doesn't retry.
+        return Ok((StatusCode::NO_CONTENT, ()).into_response());
+    };
     if result.created {
         crate::ai::describe_in_background(state.store.clone(), result.id, payload.query_text.clone());
     }
