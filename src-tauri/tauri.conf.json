@@ -13,10 +13,10 @@
     "windows": [
       {
         "title": "Kuery",
-        "width": 1100,
-        "height": 800,
+        "width": 1200,
+        "height": 950,
         "minWidth": 720,
-        "minHeight": 560
+        "minHeight": 640
       }
     ],
     "security": {
