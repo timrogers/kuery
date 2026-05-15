@@ -119,7 +119,7 @@ export function EmptyState() {
         </section>
 
         <section>
-          <h3>Capture from Copilot CLI agents</h3>
+          <h3>Capture from Copilot CLI</h3>
           <p className="hint">
             Install the Kuery plugin so the agent's Kusto MCP queries get
             captured here, and so it can search your saved queries:
