@@ -109,7 +109,12 @@ impl IntoResponse for ApiError {
 /// fires after every tool, so the bulk of payloads are not Kusto queries —
 /// the filter logic lives here so the plugin itself can be a single static
 /// JSON file with no scripting.
+///
+/// Per <https://docs.github.com/en/copilot/reference/hooks-reference>,
+/// camelCase event names yield camelCase payload fields. We accept the
+/// snake_case spelling too as a forwards-compatibility belt-and-braces.
 #[derive(Deserialize)]
+#[serde(rename_all = "camelCase")]
 struct CopilotCliHookPayload {
     #[serde(default, alias = "tool_name")]
     tool_name: Option<String>,
@@ -236,5 +241,29 @@ mod tests {
         assert!(!is_kusto_query_tool("bash"));
         assert!(!is_kusto_query_tool("view"));
         assert!(!is_kusto_query_tool("kusto_describe_database"));
+    }
+
+    #[test]
+    fn deserialises_camel_case_payload() {
+        let raw = r#"{
+            "toolName": "kusto-mcp-kusto_query",
+            "toolResult": {"resultType": "success"},
+            "toolArgs": {"query": "T | take 1", "cluster_uri": "https://x", "database": "y"}
+        }"#;
+        let parsed: CopilotCliHookPayload = serde_json::from_str(raw).unwrap();
+        assert_eq!(parsed.tool_name.as_deref(), Some("kusto-mcp-kusto_query"));
+        assert!(parsed.tool_args.is_some());
+        assert!(parsed.tool_result.is_some());
+    }
+
+    #[test]
+    fn deserialises_snake_case_payload() {
+        let raw = r#"{
+            "tool_name": "kusto_query",
+            "tool_result": {"result_type": "success"},
+            "tool_args": {"query": "T | take 1"}
+        }"#;
+        let parsed: CopilotCliHookPayload = serde_json::from_str(raw).unwrap();
+        assert_eq!(parsed.tool_name.as_deref(), Some("kusto_query"));
     }
 }
