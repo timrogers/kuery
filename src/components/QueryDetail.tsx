@@ -171,7 +171,7 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
                 : "Cluster and database are required to build an ADX URL"
             }
           >
-            Copy URL
+            Copy Azure Data Explorer URL
           </button>
         </div>
       </div>
