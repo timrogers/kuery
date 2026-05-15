@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
-import { setSetting } from "../api";
+import { openUrl } from "@tauri-apps/plugin-opener";
+import { debugInfo, setSetting, type DebugInfo } from "../api";
 
 interface WelcomeModalProps {
   onClose: () => void;
@@ -10,11 +11,14 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
   const [autostart, setAutostart] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [debug, setDebug] = useState<DebugInfo | null>(null);
+  const [copyStatus, setCopyStatus] = useState<string | null>(null);
 
   useEffect(() => {
     isEnabled()
       .then((enabled) => setAutostart(enabled))
       .catch(() => {});
+    debugInfo().then(setDebug).catch(() => {});
   }, []);
 
   async function applyAutostart(next: boolean) {
@@ -28,6 +32,17 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
       setError(null);
     } catch (e) {
       setError(String(e));
+    }
+  }
+
+  async function copyInstallCommand() {
+    const cmd = debug?.install_command ?? "copilot plugin install timrogers/kuery:plugin";
+    try {
+      await navigator.clipboard.writeText(cmd);
+      setCopyStatus("Copied!");
+      setTimeout(() => setCopyStatus(null), 2000);
+    } catch (e) {
+      setCopyStatus(`Couldn't copy: ${e}`);
     }
   }
 
@@ -83,21 +98,52 @@ export function WelcomeModal({ onClose }: WelcomeModalProps) {
         </section>
 
         <section>
-          <h3>Where queries come from</h3>
-          <ul className="hint">
-            <li>
-              <strong>Browser:</strong> install the bundled Chrome extension
-              and Kuery will auto-capture queries you run in Azure Data
-              Explorer.
-            </li>
-            <li>
-              <strong>AI agents:</strong> install the Copilot CLI hook and
-              Kuery will auto-capture queries your agents run via the Kusto
-              MCP server.
-            </li>
-          </ul>
+          <h3>Capture from Azure Data Explorer (Chrome)</h3>
           <p className="hint">
-            Setup instructions for both are in the project README.
+            Install the bundled Chrome extension to auto-capture queries you
+            run at{" "}
+            <a
+              href="#"
+              onClick={(e) => {
+                e.preventDefault();
+                openUrl("https://dataexplorer.azure.com/");
+              }}
+            >
+              dataexplorer.azure.com
+            </a>
+            :
+          </p>
+          <ol className="hint setup-steps">
+            <li>
+              Open <code>chrome://extensions</code> and enable{" "}
+              <strong>Developer mode</strong> (top-right).
+            </li>
+            <li>
+              Click <strong>Load unpacked</strong> and select the{" "}
+              <code>chrome-extension/</code> folder from the Kuery repo
+              checkout.
+            </li>
+            <li>Refresh any open Azure Data Explorer tabs.</li>
+          </ol>
+        </section>
+
+        <section>
+          <h3>Capture from Copilot CLI agents</h3>
+          <p className="hint">
+            Install the Kuery plugin so the agent's Kusto MCP queries get
+            captured here, and so it can search your saved queries:
+          </p>
+          <div className="row">
+            <code className="cli-snippet">
+              {debug?.install_command ?? "copilot plugin install timrogers/kuery:plugin"}
+            </code>
+            <button onClick={copyInstallCommand}>
+              {copyStatus ?? "Copy"}
+            </button>
+          </div>
+          <p className="hint">
+            Restart any active <code>copilot</code> sessions afterwards so
+            they pick up the new hook and MCP server.
           </p>
         </section>
 

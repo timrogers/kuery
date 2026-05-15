@@ -372,6 +372,21 @@ input:focus {
 .modal .row input {
   flex: 1;
 }
+.modal .hint.setup-steps {
+  margin: 6px 0 10px 22px;
+  padding: 0;
+}
+.modal .hint.setup-steps li {
+  margin-bottom: 4px;
+}
+.modal .hint.setup-steps code {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 5px;
+}
 .modal .row + .row,
 .modal .row + .hint {
   margin-top: 10px;
