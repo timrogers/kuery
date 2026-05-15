@@ -10,6 +10,7 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 use tower_http::cors::{Any, CorsLayer};
+use tower_http::trace::TraceLayer;
 
 use crate::store::{NewQuery, Store};
 
@@ -33,6 +34,7 @@ pub fn router(state: ApiState) -> Router {
         .route("/mcp", post(crate::mcp::handle))
         .with_state(state)
         .layer(cors)
+        .layer(TraceLayer::new_for_http())
 }
 
 pub async fn serve(state: ApiState) -> anyhow::Result<()> {
@@ -135,9 +137,11 @@ async fn copilot_cli_hook(
     Json(payload): Json<CopilotCliHookPayload>,
 ) -> Result<Response, ApiError> {
     let Some(tool_name) = extract_tool_name(&payload) else {
+        tracing::debug!("copilot-cli hook: payload missing toolName, skipping");
         return Ok(StatusCode::NO_CONTENT.into_response());
     };
     if !is_kusto_query_tool(tool_name) {
+        tracing::debug!(tool = %tool_name, "copilot-cli hook: not a kusto query tool, skipping");
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
@@ -151,6 +155,7 @@ async fn copilot_cli_hook(
         .map(|s| s.eq_ignore_ascii_case("success"))
         .unwrap_or(true);
     if !success {
+        tracing::debug!(tool = %tool_name, "copilot-cli hook: tool result not success, skipping");
         return Ok(StatusCode::NO_CONTENT.into_response());
     }
 
@@ -160,6 +165,7 @@ async fn copilot_cli_hook(
         .and_then(Value::as_str)
         .map(str::to_string);
     let Some(query_text) = query_text.filter(|s| !s.trim().is_empty()) else {
+        tracing::debug!(tool = %tool_name, "copilot-cli hook: empty/missing query arg, skipping");
         return Ok(StatusCode::NO_CONTENT.into_response());
     };
     let cluster = args
@@ -170,6 +176,14 @@ async fn copilot_cli_hook(
         .and_then(|v| v.get("database"))
         .and_then(Value::as_str)
         .map(str::to_string);
+
+    tracing::info!(
+        tool = %tool_name,
+        cluster = cluster.as_deref().unwrap_or("-"),
+        database = database.as_deref().unwrap_or("-"),
+        chars = query_text.len(),
+        "copilot-cli hook: ingesting agent query",
+    );
 
     let new_query = NewQuery {
         query_text,
@@ -182,6 +196,7 @@ async fn copilot_cli_hook(
         .ingest(&new_query)
         .map_err(|e| ApiError::bad_request(e.to_string()))?;
     let Some(result) = result else {
+        tracing::info!("copilot-cli hook: query filtered server-side (control command)");
         return Ok(StatusCode::NO_CONTENT.into_response());
     };
     if result.created {
