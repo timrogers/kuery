@@ -61,6 +61,28 @@ jobs:
       - name: Cargo test
         run: cargo test --locked
 
+  chrome-extension:
+    name: Chrome extension (syntax + manifest)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax-check JS
+        working-directory: chrome-extension
+        run: |
+          for f in *.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Validate manifest.json
+        working-directory: chrome-extension
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
+
   tauri-build:
     name: Tauri release build
     runs-on: macos-latest
