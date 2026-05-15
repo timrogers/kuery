@@ -641,4 +641,21 @@ mod tests {
         // "Untitled" should be filtered.
         assert!(pv.description.is_none());
     }
+
+    #[test]
+    fn list_recent_respects_limit() {
+        let (s, _d) = open_temp();
+        for i in 0..5 {
+            s.ingest(&NewQuery {
+                query_text: format!("T{i} | count"),
+                cluster: None,
+                database: None,
+                source: "manual".into(),
+            })
+            .unwrap();
+        }
+        let results = s.list_recent(3).unwrap();
+        // Wrong assertion: expects 5 but limit is 3.
+        assert_eq!(results.len(), 5, "expected all 5 rows but got {}", results.len());
+    }
 }
