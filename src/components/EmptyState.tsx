@@ -53,9 +53,11 @@ export function EmptyState() {
         <h1>Get started with Kuery</h1>
         <p className="hint">
           Kuery captures the Kusto queries you run so you can find and reuse
-          them later — across the browser and your AI agents. On macOS it
-          lives in your menu bar; closing this window just hides it while
-          the capture API and MCP server keep running.
+          them later — across the browser and your AI agents.
+        </p>
+        <p className="hint">
+          On macOS it lives in your menu bar; closing this window just hides
+          it while the capture API and MCP server keep running.
         </p>
 
         <ol className="setup-list">
