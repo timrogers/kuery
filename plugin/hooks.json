@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "curl -fsS --max-time 5 -X POST -H 'Content-Type: application/json' -H 'X-Kuery-Source: copilot-cli' --data-binary @- http://127.0.0.1:47821/v1/hooks/copilot-cli >/dev/null 2>&1; exit 0",
+        "powershell": "try { $body = [Console]::In.ReadToEnd(); Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:47821/v1/hooks/copilot-cli' -Body $body -ContentType 'application/json' -Headers @{ 'X-Kuery-Source' = 'copilot-cli' } -TimeoutSec 5 | Out-Null } catch { }; exit 0",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

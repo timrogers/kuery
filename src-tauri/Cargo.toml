@@ -2,7 +2,8 @@
 name = "kuery"
 version = "0.1.0"
 description = "A Tauri App"
-authors = ["you"]
+authors = ["Tim Rogers <me@timrogers.co.uk>"]
+license = "MIT"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -18,8 +19,38 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2", features = [] }
+tauri = { version = "2", features = ["tray-icon", "image-png"] }
 tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
+
+# HTTP server
+axum = "0.8"
+tokio = { version = "1", features = ["full"] }
+tower-http = { version = "0.6", features = ["cors", "trace"] }
+
+# Storage
+rusqlite = { version = "0.38", features = ["bundled"] }
+r2d2 = "0.8"
+r2d2_sqlite = "0.32"
+
+# Misc
+chrono = { version = "0.4", features = ["serde"] }
+sha2 = "0.10"
+anyhow = "1"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls"] }
+tauri-plugin-autostart = "2"
+tauri-plugin-single-instance = "2"
+
+# Agentic search powered by the local Copilot CLI.
+github-copilot-sdk = { version = "1.0.0-beta.4", features = ["derive"] }
+schemars = "1"
+
+[dev-dependencies]
+tempfile = "3"
 

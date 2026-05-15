@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "kuery",
+  "productName": "Kuery",
   "version": "0.1.0",
   "identifier": "com.caffeinesoftware.kuery",
   "build": {
@@ -12,9 +12,11 @@
   "app": {
     "windows": [
       {
-        "title": "kuery",
-        "width": 800,
-        "height": 600
+        "title": "Kuery",
+        "width": 1200,
+        "height": 950,
+        "minWidth": 720,
+        "minHeight": 640
       }
     ],
     "security": {
@@ -23,7 +25,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": ["app", "dmg"],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

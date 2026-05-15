@@ -1,0 +1,14 @@
+{
+  "name": "kuery",
+  "description": "Capture Kusto queries run via the Kusto MCP into your local Kuery desktop app.",
+  "version": "0.1.0",
+  "author": {
+    "name": "Tim Rogers"
+  },
+  "homepage": "https://github.com/timrogers/kuery",
+  "repository": "https://github.com/timrogers/kuery",
+  "license": "MIT",
+  "keywords": ["kusto", "kql", "kuery", "azure-data-explorer"],
+  "hooks": "hooks.json",
+  "mcpServers": "mcp.json"
+}

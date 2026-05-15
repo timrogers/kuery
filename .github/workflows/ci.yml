@@ -1,0 +1,111 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+# Cancel in-progress runs for the same ref when a new push lands.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_BACKTRACE: short
+
+jobs:
+  frontend:
+    name: Frontend (typecheck + build)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Typecheck and build
+        run: pnpm build
+
+  backend:
+    name: Backend (fmt + clippy + test)
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: src-tauri
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Cargo fmt
+        run: cargo fmt --all -- --check
+
+      - name: Cargo clippy
+        run: cargo clippy --all-targets --locked -- -D warnings
+
+      - name: Cargo test
+        run: cargo test --locked
+
+  chrome-extension:
+    name: Chrome extension (syntax + manifest)
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Syntax-check JS
+        working-directory: chrome-extension
+        run: |
+          for f in *.js; do
+            echo "node --check $f"
+            node --check "$f"
+          done
+
+      - name: Validate manifest.json
+        working-directory: chrome-extension
+        run: node -e "JSON.parse(require('fs').readFileSync('manifest.json','utf8'))"
+
+  tauri-build:
+    name: Tauri release build
+    runs-on: macos-latest
+    needs: [frontend, backend]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build Tauri bundle
+        run: pnpm tauri build --bundles app
