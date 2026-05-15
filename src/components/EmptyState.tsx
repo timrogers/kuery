@@ -50,7 +50,7 @@ export function EmptyState() {
   return (
     <div className="empty-state">
       <div className="empty-state-card">
-        <h1>Welcome to Kuery</h1>
+        <h1>Get started with Kuery</h1>
         <p className="hint">
           Kuery captures the Kusto queries you run so you can find and reuse
           them later — across the browser and your AI agents. Hook up one or
