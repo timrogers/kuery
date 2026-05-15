@@ -3,6 +3,7 @@ import { QueryList } from "./components/QueryList";
 import { QueryDetail } from "./components/QueryDetail";
 import { SettingsModal } from "./components/SettingsModal";
 import { WelcomeModal } from "./components/WelcomeModal";
+import { EmptyState } from "./components/EmptyState";
 import { useDebounced } from "./hooks";
 import {
   agentSearch,
@@ -202,33 +203,41 @@ function App() {
         <div className="smart-status">{smartMessage}</div>
       )}
 
-      <div className="app-body">
-        <aside className="sidebar">
-          <QueryList
-            queries={queries}
-            selectedId={selectedId}
-            onSelect={(q) => setSelectedId(q.id)}
-            onToggleStar={toggleStar}
-            searchTerm={debouncedSearch}
-            starredOnly={starredOnly}
-          />
-        </aside>
-        <main className="main">
-          {selected ? (
-            <QueryDetail
-              query={selected}
-              onUpdate={patchSelected}
-              onDelete={deleteSelected}
+      {queries.length === 0 &&
+      search.trim() === "" &&
+      !starredOnly &&
+      !smartMode &&
+      !smartLoading ? (
+        <EmptyState onShowWelcome={() => setShowWelcome(true)} />
+      ) : (
+        <div className="app-body">
+          <aside className="sidebar">
+            <QueryList
+              queries={queries}
+              selectedId={selectedId}
+              onSelect={(q) => setSelectedId(q.id)}
+              onToggleStar={toggleStar}
+              searchTerm={debouncedSearch}
+              starredOnly={starredOnly}
             />
-          ) : (
-            <div className="empty">
-              {smartMode
-                ? "Describe the queries you want and press Enter."
-                : "Select a query to see details."}
-            </div>
-          )}
-        </main>
-      </div>
+          </aside>
+          <main className="main">
+            {selected ? (
+              <QueryDetail
+                query={selected}
+                onUpdate={patchSelected}
+                onDelete={deleteSelected}
+              />
+            ) : (
+              <div className="empty">
+                {smartMode
+                  ? "Describe the queries you want and press Enter."
+                  : "Select a query to see details."}
+              </div>
+            )}
+          </main>
+        </div>
+      )}
 
       {showSettings && (
         <SettingsModal
