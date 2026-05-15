@@ -147,34 +147,50 @@ function App() {
     <div className="app">
       <header className="app-header">
         <div className="brand">Kuery</div>
-        <input
-          className="search-input"
-          placeholder={
-            smartMode
-              ? "Describe queries you're looking for, then press Enter…"
-              : "Search queries…"
-          }
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => {
-            if (smartMode && e.key === "Enter") {
-              e.preventDefault();
-              runSmartSearch();
+        <div className={`search-box${smartMode ? " search-box-smart" : ""}`}>
+          <input
+            className="search-input"
+            placeholder={
+              smartMode
+                ? "Describe queries you're looking for, then press Enter…"
+                : "Search queries…"
             }
-          }}
-          disabled={smartLoading}
-        />
-        <button
-          type="button"
-          className={`smart-toggle${smartMode ? " smart-toggle-on" : ""}`}
-          onClick={toggleSmartMode}
-          title={
-            smartMode ? "Switch off smart search" : "Search with Copilot CLI"
-          }
-          aria-pressed={smartMode}
-        >
-          ✨ Smart
-        </button>
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            onKeyDown={(e) => {
+              if (smartMode && e.key === "Enter") {
+                e.preventDefault();
+                runSmartSearch();
+              }
+            }}
+            disabled={smartLoading}
+          />
+          {search && !smartLoading && (
+            <button
+              type="button"
+              className="search-clear"
+              onClick={() => setSearch("")}
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              ×
+            </button>
+          )}
+          <button
+            type="button"
+            className={`smart-toggle smart-toggle-inline${
+              smartMode ? " smart-toggle-on" : ""
+            }`}
+            onClick={toggleSmartMode}
+            title={
+              smartMode ? "Switch off smart search" : "Search with Copilot CLI"
+            }
+            aria-pressed={smartMode}
+            disabled={smartLoading}
+          >
+            ✨ Smart
+          </button>
+        </div>
         <label className="filter-toggle">
           <input
             type="checkbox"
