@@ -1,6 +1,7 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
 mod api;
 mod ipc;
+mod mcp;
 mod store;
 
 use tauri::Manager;

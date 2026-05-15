@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "command",
+        "bash": "$KUERY_HOOK_DIR/post-tool-use.sh",
+        "powershell": "& \"$env:KUERY_HOOK_DIR\\post-tool-use.ps1\"",
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

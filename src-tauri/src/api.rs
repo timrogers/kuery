@@ -29,6 +29,7 @@ pub fn router(state: ApiState) -> Router {
     Router::new()
         .route("/v1/health", get(health))
         .route("/v1/queries", post(ingest))
+        .route("/mcp", post(crate::mcp::handle))
         .with_state(state)
         .layer(cors)
 }
