@@ -169,3 +169,12 @@ pub fn debug_info(paths: State<'_, crate::LogPaths>) -> CmdResult<DebugInfo> {
 pub async fn copilot_cli_status() -> CmdResult<crate::copilot_cli::CopilotCliStatus> {
     Ok(crate::copilot_cli::check().await)
 }
+
+#[tauri::command]
+pub fn export_queries_csv(
+    store: State<'_, Store>,
+    dest_path: String,
+    cluster_filter: Option<String>,
+) -> CmdResult<usize> {
+    Ok(store.export_queries_csv(&dest_path, cluster_filter.as_deref())?)
+}

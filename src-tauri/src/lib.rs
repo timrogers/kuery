@@ -251,6 +251,7 @@ pub fn run() {
             ipc::agent_search,
             ipc::debug_info,
             ipc::copilot_cli_status,
+            ipc::export_queries_csv,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
