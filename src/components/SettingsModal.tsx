@@ -8,6 +8,7 @@ import {
   getSetting,
   importDatabase,
   setSetting,
+  validateModelsToken,
   type DebugInfo,
 } from "../api";
 
@@ -23,6 +24,7 @@ export function SettingsModal({ onClose, onChanged }: Props) {
   const [autostart, setAutostart] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [debug, setDebug] = useState<DebugInfo | null>(null);
+  const [savingToken, setSavingToken] = useState(false);
 
   useEffect(() => {
     getSetting(TOKEN_KEY).then((v) => setToken(v ?? ""));
@@ -42,8 +44,24 @@ export function SettingsModal({ onClose, onChanged }: Props) {
   }
 
   async function saveToken() {
-    await setSetting(TOKEN_KEY, token.trim() === "" ? null : token.trim());
-    setStatus("Token saved.");
+    const trimmed = token.trim();
+    if (trimmed === "") {
+      await setSetting(TOKEN_KEY, null);
+      setStatus("Token cleared.");
+      return;
+    }
+    setSavingToken(true);
+    setStatus("Validating token against GitHub Models…");
+    try {
+      await validateModelsToken(trimmed);
+      await setSetting(TOKEN_KEY, trimmed);
+      setStatus("Token validated and saved.");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
+      setStatus(`Couldn't validate token: ${msg}`);
+    } finally {
+      setSavingToken(false);
+    }
   }
 
   async function toggleAutostart(next: boolean) {
@@ -108,8 +126,11 @@ export function SettingsModal({ onClose, onChanged }: Props) {
               placeholder="ghp_…"
               value={token}
               onChange={(e) => setToken(e.target.value)}
+              disabled={savingToken}
             />
-            <button onClick={saveToken}>Save</button>
+            <button onClick={saveToken} disabled={savingToken}>
+              {savingToken ? "Validating…" : "Save"}
+            </button>
           </div>
         </section>
 

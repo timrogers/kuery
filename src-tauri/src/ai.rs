@@ -9,6 +9,7 @@ use crate::store::{Store, UpdateQuery};
 
 const MODEL: &str = "openai/gpt-4.1";
 const ENDPOINT: &str = "https://models.github.ai/inference/chat/completions";
+const CATALOG_ENDPOINT: &str = "https://models.github.ai/catalog/models";
 const TOKEN_SETTING: &str = "github_models_token";
 
 const SYSTEM_PROMPT: &str = "You are an expert at analyzing Kusto queries. \
@@ -116,6 +117,52 @@ async fn describe(store: &Store, id: i64, query_text: &str) -> anyhow::Result<()
         )?;
     }
     Ok(())
+}
+
+/// Quickly verifies that a token can authenticate against GitHub Models.
+///
+/// Hits the lightweight catalog endpoint with the supplied bearer; doesn't
+/// touch any inference quota. Returns a user-facing error message when the
+/// check fails (invalid token, no `models:read` scope, network down, …).
+pub async fn validate_token(token: &str) -> Result<(), String> {
+    let token = token.trim();
+    if token.is_empty() {
+        return Err("Token is empty.".to_string());
+    }
+
+    let client = reqwest::Client::builder()
+        .timeout(std::time::Duration::from_secs(10))
+        .build()
+        .map_err(|e| format!("Couldn't build HTTP client: {e}"))?;
+
+    let resp = client
+        .get(CATALOG_ENDPOINT)
+        .bearer_auth(token)
+        .header("Accept", "application/json")
+        .send()
+        .await
+        .map_err(|e| {
+            if e.is_timeout() {
+                "Timed out talking to GitHub Models. Check your network connection.".to_string()
+            } else {
+                format!("Couldn't reach GitHub Models: {e}")
+            }
+        })?;
+
+    let status = resp.status();
+    if status.is_success() {
+        return Ok(());
+    }
+
+    let body = resp.text().await.unwrap_or_default();
+    let snippet = body.chars().take(200).collect::<String>();
+    Err(match status.as_u16() {
+        401 => "Token rejected (401). Make sure it has the `models:read` scope.".to_string(),
+        403 => "Token forbidden (403). It needs the `models:read` scope.".to_string(),
+        404 => format!("GitHub Models endpoint not found (404). {snippet}"),
+        429 => "Rate limited (429). Try again in a minute.".to_string(),
+        code => format!("GitHub Models returned HTTP {code}. {snippet}"),
+    })
 }
 
 fn clean_query(s: &str) -> String {

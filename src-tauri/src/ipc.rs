@@ -150,3 +150,10 @@ pub fn debug_info(paths: State<'_, crate::LogPaths>) -> CmdResult<DebugInfo> {
         install_command: crate::COPILOT_PLUGIN_INSTALL_COMMAND.to_string(),
     })
 }
+
+#[tauri::command]
+pub async fn validate_models_token(token: String) -> CmdResult<()> {
+    crate::ai::validate_token(&token)
+        .await
+        .map_err(|message| CommandError { message })
+}
