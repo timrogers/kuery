@@ -127,10 +127,22 @@ pub fn run() {
                 )
                 .try_init();
             app.manage(LoggingGuard(guard));
+            let log_file = data_dir.join("logs").join(LOG_FILE_NAME);
+            // Touch the log file so users opening it from Settings before any
+            // log lines have flushed don't hit a "file not found" error.
+            let _ = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(&log_file);
             app.manage(LogPaths {
                 dir: log_dir,
-                file: data_dir.join("logs").join(LOG_FILE_NAME),
+                file: log_file,
             });
+
+            tracing::info!(
+                version = env!("CARGO_PKG_VERSION"),
+                "Kuery starting (launched_at_login={launched_at_login})"
+            );
 
             let db_path = data_dir.join("kuery.sqlite");
 

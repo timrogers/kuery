@@ -43,6 +43,26 @@ export function SettingsModal({ onClose, onChanged }: Props) {
     }
   }
 
+  async function openLog() {
+    if (!debug) return;
+    try {
+      await openPath(debug.log_file);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus(`Couldn't open log file: ${msg}. Try 'Show in folder' instead.`);
+    }
+  }
+
+  async function revealLog() {
+    if (!debug) return;
+    try {
+      await revealItemInDir(debug.log_file);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setStatus(`Couldn't reveal log file: ${msg}`);
+    }
+  }
+
   async function saveToken() {
     const trimmed = token.trim();
     if (trimmed === "") {
@@ -206,12 +226,8 @@ export function SettingsModal({ onClose, onChanged }: Props) {
                 <code className="cli-snippet">{debug.log_file}</code>
               </div>
               <div className="row">
-                <button onClick={() => openPath(debug.log_file)}>
-                  Open log file
-                </button>
-                <button onClick={() => revealItemInDir(debug.log_file)}>
-                  Show in folder
-                </button>
+                <button onClick={openLog}>Open log file</button>
+                <button onClick={revealLog}>Show in folder</button>
                 <button onClick={() => copy(debug.log_file, "log path")}>
                   Copy path
                 </button>
