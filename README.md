@@ -24,7 +24,7 @@ forward queries over HTTP.
    (hook) ────► │            │                                         │
                 │            │   ▲                                     │
                 │            ▼   │                                     │
-                │   AI describer ─► GitHub Models (gpt-4.1)            │
+                │   AI describer ─► Copilot CLI (gpt-5.4-mini)         │
                 │                                                      │
                 │   MCP server (POST /mcp, JSON-RPC)  ◄─── any agent   │
                 └──────────────────────────────────────────────────────┘
@@ -117,10 +117,11 @@ the current database is taken before merge.
 
 ## AI descriptions
 
-When a brand-new query is captured the app asks GitHub Models (`openai/gpt-4.1`,
-free with a GitHub PAT — see Settings) to write a one-line summary, which is
-saved on the row and indexed alongside the query text for search. If no token
-is configured the step is skipped silently.
+When a brand-new query is captured the app spins up a short-lived Copilot CLI
+session (`gpt-5.4-mini`) and asks it to write a one-line summary, which is
+saved on the row and indexed alongside the query text for search. If the
+Copilot CLI isn't installed or the user isn't logged in the step is skipped
+silently — the query is still captured.
 
 ## License
 

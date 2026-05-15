@@ -212,7 +212,6 @@ pub fn run() {
             ipc::import_database,
             ipc::agent_search,
             ipc::debug_info,
-            ipc::validate_models_token,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -5,10 +5,7 @@ import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import {
   debugInfo,
   exportDatabase,
-  getSetting,
   importDatabase,
-  setSetting,
-  validateModelsToken,
   type DebugInfo,
 } from "../api";
 
@@ -18,17 +15,12 @@ interface Props {
   onShowWelcome: () => void;
 }
 
-const TOKEN_KEY = "github_models_token";
-
 export function SettingsModal({ onClose, onChanged, onShowWelcome }: Props) {
-  const [token, setToken] = useState("");
   const [autostart, setAutostart] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [debug, setDebug] = useState<DebugInfo | null>(null);
-  const [savingToken, setSavingToken] = useState(false);
 
   useEffect(() => {
-    getSetting(TOKEN_KEY).then((v) => setToken(v ?? ""));
     isEnabled()
       .then((v) => setAutostart(v))
       .catch(() => {});
@@ -61,27 +53,6 @@ export function SettingsModal({ onClose, onChanged, onShowWelcome }: Props) {
     } catch (e) {
       const msg = e instanceof Error ? e.message : String(e);
       setStatus(`Couldn't reveal log file: ${msg}`);
-    }
-  }
-
-  async function saveToken() {
-    const trimmed = token.trim();
-    if (trimmed === "") {
-      await setSetting(TOKEN_KEY, null);
-      setStatus("Token cleared.");
-      return;
-    }
-    setSavingToken(true);
-    setStatus("Validating token against GitHub Models…");
-    try {
-      await validateModelsToken(trimmed);
-      await setSetting(TOKEN_KEY, trimmed);
-      setStatus("Token validated and saved.");
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String((e as { message?: string })?.message ?? e);
-      setStatus(`Couldn't validate token: ${msg}`);
-    } finally {
-      setSavingToken(false);
     }
   }
 
@@ -130,30 +101,6 @@ export function SettingsModal({ onClose, onChanged, onShowWelcome }: Props) {
           <h2>Settings</h2>
           <button onClick={onClose}>×</button>
         </header>
-
-        <section>
-          <h3>GitHub Models token</h3>
-          <p className="hint">
-            Used to generate AI descriptions of captured queries. Free with a
-            GitHub account at{" "}
-            <a href="https://github.com/settings/tokens" target="_blank">
-              github.com/settings/tokens
-            </a>
-            .
-          </p>
-          <div className="row">
-            <input
-              type="password"
-              placeholder="ghp_…"
-              value={token}
-              onChange={(e) => setToken(e.target.value)}
-              disabled={savingToken}
-            />
-            <button onClick={saveToken} disabled={savingToken}>
-              {savingToken ? "Validating…" : "Save"}
-            </button>
-          </div>
-        </section>
 
         <section>
           <h3>Startup</h3>

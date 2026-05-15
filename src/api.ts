@@ -93,7 +93,3 @@ export interface DebugInfo {
 export async function debugInfo(): Promise<DebugInfo> {
   return invoke<DebugInfo>("debug_info");
 }
-
-export async function validateModelsToken(token: string): Promise<void> {
-  return invoke<void>("validate_models_token", { token });
-}

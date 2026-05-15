@@ -23,8 +23,8 @@ export function SmartEmptyState() {
         <section>
           <h3>How it works</h3>
           <p className="hint">
-            Smart search uses the GitHub Copilot SDK with your saved GitHub
-            Models token. It runs one or more full-text searches under the
+            Smart search uses the GitHub Copilot SDK via the Copilot CLI on
+            your machine. It runs one or more full-text searches under the
             hood and picks the best matches — you'll see live progress as it
             works.
           </p>
