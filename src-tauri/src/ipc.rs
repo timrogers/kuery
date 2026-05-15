@@ -154,6 +154,6 @@ pub fn debug_info(paths: State<'_, crate::LogPaths>) -> CmdResult<DebugInfo> {
     Ok(DebugInfo {
         log_file: paths.file.to_string_lossy().to_string(),
         log_dir: paths.dir.to_string_lossy().to_string(),
-        install_command: crate::COPILOT_PLUGIN_INSTALL_COMMAND.to_string(),
+        install_command: crate::copilot_plugin_install_command(),
     })
 }

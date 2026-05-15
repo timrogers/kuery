@@ -17,9 +17,31 @@ use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilte
 /// Stable file name for the persistent log; matched by `LogPaths::file`.
 const LOG_FILE_NAME: &str = "kuery.log";
 
-/// Canonical Copilot CLI install command, surfaced in the Settings UI.
+/// Canonical Copilot CLI install command for the published plugin. Used
+/// as a fallback when we can't find a usable local repo checkout (e.g.
+/// when someone runs a prebuilt binary on a machine without sources).
 pub const COPILOT_PLUGIN_INSTALL_COMMAND: &str =
     "copilot plugin install timrogers/kuery:plugin";
+
+/// Returns the recommended `copilot plugin install` command for the
+/// running build.
+///
+/// We bake the repo path in at compile time via `CARGO_MANIFEST_DIR`
+/// (which points at `src-tauri/`); the plugin lives at
+/// `<repo>/plugin`. If that directory exists on disk at runtime we
+/// suggest installing from it, which always pulls the freshest plugin
+/// for whatever branch the user is on. If it doesn't (binary copied to
+/// another machine, repo deleted, etc.) we fall back to the published
+/// `timrogers/kuery:plugin` spec.
+pub fn copilot_plugin_install_command() -> String {
+    let plugin_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("plugin");
+    match plugin_dir.canonicalize() {
+        Ok(p) if p.is_dir() => format!("copilot plugin install {}", p.display()),
+        _ => COPILOT_PLUGIN_INSTALL_COMMAND.to_string(),
+    }
+}
 
 /// Filesystem locations of the persistent logs, made available to IPC commands
 /// via Tauri state so the frontend can show / open them.
