@@ -4,6 +4,7 @@ import { QueryDetail } from "./components/QueryDetail";
 import { SettingsModal } from "./components/SettingsModal";
 import { WelcomeModal } from "./components/WelcomeModal";
 import { EmptyState } from "./components/EmptyState";
+import { SmartEmptyState } from "./components/SmartEmptyState";
 import { useDebounced } from "./hooks";
 import {
   agentSearch,
@@ -209,6 +210,11 @@ function App() {
       !smartMode &&
       !smartLoading ? (
         <EmptyState onShowWelcome={() => setShowWelcome(true)} />
+      ) : smartMode &&
+        queries.length === 0 &&
+        !smartLoading &&
+        !smartMessage ? (
+        <SmartEmptyState />
       ) : (
         <div className="app-body">
           <aside className="sidebar">
