@@ -2,7 +2,6 @@ import { useCallback, useEffect, useState } from "react";
 import { QueryList } from "./components/QueryList";
 import { QueryDetail } from "./components/QueryDetail";
 import { SettingsModal } from "./components/SettingsModal";
-import { WelcomeModal } from "./components/WelcomeModal";
 import { EmptyState } from "./components/EmptyState";
 import { SmartEmptyState } from "./components/SmartEmptyState";
 import { useDebounced } from "./hooks";
@@ -10,7 +9,6 @@ import {
   agentSearch,
   type AgentProgress,
   deleteQuery,
-  getSetting,
   searchQueries,
   updateQuery,
 } from "./api";
@@ -27,16 +25,9 @@ function App() {
   const [queries, setQueries] = useState<Query[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
-  const [showWelcome, setShowWelcome] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const debouncedSearch = useDebounced(search, 200);
-
-  useEffect(() => {
-    getSetting("welcome_completed")
-      .then((v) => setShowWelcome(v !== "1"))
-      .catch(() => {});
-  }, []);
 
   const reload = useCallback(async () => {
     // Smart-mode results are agent-selected and shouldn't be clobbered by
@@ -209,7 +200,7 @@ function App() {
       !starredOnly &&
       !smartMode &&
       !smartLoading ? (
-        <EmptyState onShowWelcome={() => setShowWelcome(true)} />
+        <EmptyState />
       ) : smartMode &&
         queries.length === 0 &&
         !smartLoading &&
@@ -249,11 +240,8 @@ function App() {
         <SettingsModal
           onClose={() => setShowSettings(false)}
           onChanged={reload}
-          onShowWelcome={() => setShowWelcome(true)}
         />
       )}
-
-      {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
     </div>
   );
 }

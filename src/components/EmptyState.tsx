@@ -1,17 +1,23 @@
 import { useEffect, useState } from "react";
 import { openUrl } from "@tauri-apps/plugin-opener";
+import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import { debugInfo, type DebugInfo } from "../api";
 
-interface EmptyStateProps {
-  onShowWelcome: () => void;
-}
-
-export function EmptyState({ onShowWelcome }: EmptyStateProps) {
+export function EmptyState() {
   const [debug, setDebug] = useState<DebugInfo | null>(null);
   const [copyStatus, setCopyStatus] = useState<string | null>(null);
+  const [autostart, setAutostart] = useState(false);
+  const [autostartLoaded, setAutostartLoaded] = useState(false);
+  const [autostartError, setAutostartError] = useState<string | null>(null);
 
   useEffect(() => {
     debugInfo().then(setDebug).catch(() => {});
+    isEnabled()
+      .then((v) => {
+        setAutostart(v);
+        setAutostartLoaded(true);
+      })
+      .catch(() => setAutostartLoaded(true));
   }, []);
 
   const installCommand =
@@ -27,15 +33,60 @@ export function EmptyState({ onShowWelcome }: EmptyStateProps) {
     }
   }
 
+  async function applyAutostart(next: boolean) {
+    try {
+      if (next) {
+        await enable();
+      } else {
+        await disable();
+      }
+      setAutostart(next);
+      setAutostartError(null);
+    } catch (e) {
+      setAutostartError(String(e));
+    }
+  }
+
   return (
     <div className="empty-state">
       <div className="empty-state-card">
-        <h1>No queries yet</h1>
+        <h1>Welcome to Kuery</h1>
         <p className="hint">
           Kuery captures the Kusto queries you run so you can find and reuse
-          them later. Hook up one or both sources below and queries will start
-          showing up here automatically.
+          them later — across the browser and your AI agents. Hook up one or
+          both sources below and queries will start showing up here
+          automatically.
         </p>
+
+        <section>
+          <h3>Runs in the menu bar</h3>
+          <p className="hint">
+            Kuery is designed to run quietly in the background. On macOS it
+            lives in your menu bar instead of the Dock — click the tray icon
+            to open this window any time, or to quit the app. Closing this
+            window just hides it; the capture API and MCP server keep
+            running.
+          </p>
+        </section>
+
+        <section>
+          <h3>Launch at login</h3>
+          <p className="hint">
+            For Kuery to capture queries it needs to be running. We recommend
+            letting it start automatically when you log in. You can change
+            this later from Settings.
+          </p>
+          <label className="filter-toggle">
+            <input
+              type="checkbox"
+              checked={autostart}
+              disabled={!autostartLoaded}
+              onChange={(e) => applyAutostart(e.target.checked)}
+            />
+            Start Kuery when I log in
+          </label>
+          {autostartError && <div className="error">{autostartError}</div>}
+        </section>
 
         <section>
           <h3>Capture from Azure Data Explorer (Chrome)</h3>
@@ -82,20 +133,6 @@ export function EmptyState({ onShowWelcome }: EmptyStateProps) {
             they pick up the new hook and MCP server.
           </p>
         </section>
-
-        <p className="hint">
-          Need the full walkthrough?{" "}
-          <a
-            href="#"
-            onClick={(e) => {
-              e.preventDefault();
-              onShowWelcome();
-            }}
-          >
-            Open the welcome guide
-          </a>
-          .
-        </p>
       </div>
     </div>
   );

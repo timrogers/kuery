@@ -12,10 +12,9 @@ import {
 interface Props {
   onClose: () => void;
   onChanged: () => void;
-  onShowWelcome: () => void;
 }
 
-export function SettingsModal({ onClose, onChanged, onShowWelcome }: Props) {
+export function SettingsModal({ onClose, onChanged }: Props) {
   const [autostart, setAutostart] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [debug, setDebug] = useState<DebugInfo | null>(null);
@@ -187,19 +186,10 @@ export function SettingsModal({ onClose, onChanged, onShowWelcome }: Props) {
         <section>
           <h3>Help</h3>
           <p className="hint">
-            Walk through the setup guide again — capturing queries from
-            Chrome and from the Copilot CLI.
+            Need to walk through setup again? Delete all your queries (or
+            install Kuery on a fresh machine) and the welcome guide reappears
+            here as the empty state.
           </p>
-          <div className="row">
-            <button
-              onClick={() => {
-                onShowWelcome();
-                onClose();
-              }}
-            >
-              Show welcome guide
-            </button>
-          </div>
         </section>
 
         {status && <div className="status">{status}</div>}
