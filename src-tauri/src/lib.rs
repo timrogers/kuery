@@ -34,13 +34,28 @@ pub const COPILOT_PLUGIN_INSTALL_COMMAND: &str =
 /// another machine, repo deleted, etc.) we fall back to the published
 /// `timrogers/kuery:plugin` spec.
 pub fn copilot_plugin_install_command() -> String {
-    let plugin_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("plugin");
-    match plugin_dir.canonicalize() {
-        Ok(p) if p.is_dir() => format!("copilot plugin install {}", p.display()),
-        _ => COPILOT_PLUGIN_INSTALL_COMMAND.to_string(),
+    match repo_subdir("plugin") {
+        Some(p) => format!("copilot plugin install {}", p.display()),
+        None => COPILOT_PLUGIN_INSTALL_COMMAND.to_string(),
     }
+}
+
+/// Filesystem path to the bundled Chrome extension's source directory,
+/// derived the same way as [`copilot_plugin_install_command`]: from the
+/// compile-time `CARGO_MANIFEST_DIR` plus `../chrome-extension`. Returns
+/// `None` if that directory doesn't exist on disk at runtime.
+pub fn chrome_extension_path() -> Option<String> {
+    repo_subdir("chrome-extension").map(|p| p.display().to_string())
+}
+
+/// Resolve `<repo_root>/<name>` from the compile-time manifest dir and
+/// canonicalise it; returns `None` if it doesn't exist or isn't a
+/// directory.
+fn repo_subdir(name: &str) -> Option<std::path::PathBuf> {
+    let p = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join(name);
+    p.canonicalize().ok().filter(|p| p.is_dir())
 }
 
 /// Filesystem locations of the persistent logs, made available to IPC commands

@@ -88,6 +88,7 @@ export interface DebugInfo {
   log_file: string;
   log_dir: string;
   install_command: string;
+  chrome_extension_path: string | null;
 }
 
 export async function debugInfo(): Promise<DebugInfo> {

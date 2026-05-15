@@ -22,15 +22,25 @@ export function EmptyState() {
 
   const installCommand =
     debug?.install_command ?? "copilot plugin install timrogers/kuery:plugin";
+  const extensionPath = debug?.chrome_extension_path ?? null;
 
-  async function copyInstall() {
+  async function copyToClipboard(text: string, label: string) {
     try {
-      await navigator.clipboard.writeText(installCommand);
-      setCopyStatus("Copied!");
+      await navigator.clipboard.writeText(text);
+      setCopyStatus(`Copied ${label}`);
       setTimeout(() => setCopyStatus(null), 2000);
     } catch (e) {
       setCopyStatus(`Couldn't copy: ${e}`);
     }
+  }
+
+  async function copyInstall() {
+    await copyToClipboard(installCommand, "command");
+  }
+
+  async function copyExtensionPath() {
+    if (!extensionPath) return;
+    await copyToClipboard(extensionPath, "path");
   }
 
   async function applyAutostart(next: boolean) {
@@ -108,12 +118,20 @@ export function EmptyState() {
                   <strong>Developer mode</strong> (top-right).
                 </li>
                 <li>
-                  Click <strong>Load unpacked</strong> and select the{" "}
-                  <code>chrome-extension/</code> folder from the Kuery repo
-                  checkout.
+                  Click <strong>Load unpacked</strong> and select the
+                  Kuery <code>chrome-extension/</code> folder
+                  {extensionPath ? " — its full path is below." : "."}
                 </li>
                 <li>Refresh any open Azure Data Explorer tabs.</li>
               </ol>
+              {extensionPath && (
+                <div className="row">
+                  <code className="cli-snippet">{extensionPath}</code>
+                  <button onClick={copyExtensionPath}>
+                    {copyStatus === "Copied path" ? copyStatus : "Copy"}
+                  </button>
+                </div>
+              )}
             </div>
           </li>
 
@@ -127,7 +145,9 @@ export function EmptyState() {
               </p>
               <div className="row">
                 <code className="cli-snippet">{installCommand}</code>
-                <button onClick={copyInstall}>{copyStatus ?? "Copy"}</button>
+                <button onClick={copyInstall}>
+                  {copyStatus === "Copied command" ? copyStatus : "Copy"}
+                </button>
               </div>
               <p className="hint">
                 Restart any active <code>copilot</code> sessions afterwards

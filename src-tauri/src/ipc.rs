@@ -147,6 +147,7 @@ pub struct DebugInfo {
     pub log_file: String,
     pub log_dir: String,
     pub install_command: String,
+    pub chrome_extension_path: Option<String>,
 }
 
 #[tauri::command]
@@ -155,5 +156,6 @@ pub fn debug_info(paths: State<'_, crate::LogPaths>) -> CmdResult<DebugInfo> {
         log_file: paths.file.to_string_lossy().to_string(),
         log_dir: paths.dir.to_string_lossy().to_string(),
         install_command: crate::copilot_plugin_install_command(),
+        chrome_extension_path: crate::chrome_extension_path(),
     })
 }
