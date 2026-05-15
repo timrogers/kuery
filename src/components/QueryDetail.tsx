@@ -38,12 +38,35 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(query.description ?? "");
   const [copyState, setCopyState] = useState<string | null>(null);
+  const [adxUrl, setAdxUrl] = useState<string | null>(null);
 
   useEffect(() => {
     setEditing(false);
     setDraft(query.description ?? "");
     setCopyState(null);
   }, [query.id]);
+
+  // Precompute the ADX URL whenever the query changes. We can't build it
+  // inside the click handler because gzip compression is async — WebKit
+  // drops the user-gesture token across the `await` and then rejects
+  // `clipboard.writeText` with NotAllowedError.
+  useEffect(() => {
+    let cancelled = false;
+    if (!query.cluster || !query.database) {
+      setAdxUrl(null);
+      return;
+    }
+    buildAdxUrl(query.cluster, query.database, query.query_text)
+      .then((u) => {
+        if (!cancelled) setAdxUrl(u);
+      })
+      .catch(() => {
+        if (!cancelled) setAdxUrl(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [query.id, query.cluster, query.database, query.query_text]);
 
   function save() {
     const next = draft.trim();
@@ -56,31 +79,22 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
     setTimeout(() => setCopyState(null), 2000);
   }
 
-  async function copyText() {
-    try {
-      await navigator.clipboard.writeText(query.query_text);
-      flashCopyState("Copied query");
-    } catch (e) {
-      flashCopyState(`Couldn't copy: ${e}`);
-    }
+  function copyText() {
+    navigator.clipboard
+      .writeText(query.query_text)
+      .then(() => flashCopyState("Copied query"))
+      .catch((e) => flashCopyState(`Couldn't copy: ${e}`));
   }
 
-  async function copyUrl() {
-    if (!query.cluster || !query.database) return;
-    try {
-      const url = await buildAdxUrl(
-        query.cluster,
-        query.database,
-        query.query_text
-      );
-      await navigator.clipboard.writeText(url);
-      flashCopyState("Copied URL");
-    } catch (e) {
-      flashCopyState(`Couldn't copy URL: ${e}`);
-    }
+  function copyUrl() {
+    if (!adxUrl) return;
+    navigator.clipboard
+      .writeText(adxUrl)
+      .then(() => flashCopyState("Copied URL"))
+      .catch((e) => flashCopyState(`Couldn't copy URL: ${e}`));
   }
 
-  const canCopyUrl = !!query.cluster && !!query.database;
+  const canCopyUrl = !!adxUrl;
 
   return (
     <div className="detail">
