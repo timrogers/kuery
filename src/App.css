@@ -306,6 +306,15 @@ input:focus {
   font-weight: 500;
   color: var(--text-muted);
 }
+.detail-query-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.detail-query-actions .hint {
+  margin-right: 4px;
+  font-size: 12px;
+}
 .detail-query {
   background: var(--bg-subtle);
   border: 1px solid var(--border);

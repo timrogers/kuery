@@ -7,13 +7,42 @@ interface Props {
   onDelete: () => void;
 }
 
+/// Build the same kind of share URL the ADX UI's "Share" button produces:
+/// gzip the query, base64 it, URL-encode, append as ?query=.
+async function buildAdxUrl(
+  cluster: string,
+  database: string,
+  query: string
+): Promise<string> {
+  const stream = new Blob([query]).stream().pipeThrough(
+    new CompressionStream("gzip")
+  );
+  const compressed = new Uint8Array(await new Response(stream).arrayBuffer());
+  let binary = "";
+  for (let i = 0; i < compressed.length; i++) {
+    binary += String.fromCharCode(compressed[i]);
+  }
+  const encoded = encodeURIComponent(btoa(binary));
+  // ADX accepts either the short cluster name or the FQDN; strip the
+  // .kusto.windows.net suffix so the URL matches the share-button output.
+  const clean = cluster.replace(/^https?:\/\//, "").replace(
+    /\.kusto\.windows\.net\/?$/,
+    ""
+  );
+  return `https://dataexplorer.azure.com/clusters/${clean}/databases/${encodeURIComponent(
+    database
+  )}?query=${encoded}`;
+}
+
 export function QueryDetail({ query, onUpdate, onDelete }: Props) {
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(query.description ?? "");
+  const [copyState, setCopyState] = useState<string | null>(null);
 
   useEffect(() => {
     setEditing(false);
     setDraft(query.description ?? "");
+    setCopyState(null);
   }, [query.id]);
 
   function save() {
@@ -21,6 +50,37 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
     onUpdate({ description: next === "" ? null : next });
     setEditing(false);
   }
+
+  function flashCopyState(message: string) {
+    setCopyState(message);
+    setTimeout(() => setCopyState(null), 2000);
+  }
+
+  async function copyText() {
+    try {
+      await navigator.clipboard.writeText(query.query_text);
+      flashCopyState("Copied query");
+    } catch (e) {
+      flashCopyState(`Couldn't copy: ${e}`);
+    }
+  }
+
+  async function copyUrl() {
+    if (!query.cluster || !query.database) return;
+    try {
+      const url = await buildAdxUrl(
+        query.cluster,
+        query.database,
+        query.query_text
+      );
+      await navigator.clipboard.writeText(url);
+      flashCopyState("Copied URL");
+    } catch (e) {
+      flashCopyState(`Couldn't copy URL: ${e}`);
+    }
+  }
+
+  const canCopyUrl = !!query.cluster && !!query.database;
 
   return (
     <div className="detail">
@@ -85,9 +145,21 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
       </dl>
       <div className="detail-query-header">
         <span>Query</span>
-        <button onClick={() => navigator.clipboard.writeText(query.query_text)}>
-          Copy
-        </button>
+        <div className="detail-query-actions">
+          {copyState && <span className="hint">{copyState}</span>}
+          <button onClick={copyText}>Copy</button>
+          <button
+            onClick={copyUrl}
+            disabled={!canCopyUrl}
+            title={
+              canCopyUrl
+                ? "Copy an Azure Data Explorer share URL that opens this query"
+                : "Cluster and database are required to build an ADX URL"
+            }
+          >
+            Copy URL
+          </button>
+        </div>
       </div>
       <pre className="detail-query">{query.query_text}</pre>
     </div>
