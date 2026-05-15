@@ -173,6 +173,17 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
           >
             Copy Azure Data Explorer URL
           </button>
+          <button
+            onClick={() => adxUrl && window.open(adxUrl, "_blank")}
+            disabled={!canCopyUrl}
+            title={
+              canCopyUrl
+                ? "Open this query in Azure Data Explorer"
+                : "Cluster and database are required to open in Azure Data Explorer"
+            }
+          >
+            Open in Azure Data Explorer
+          </button>
         </div>
       </div>
       <pre className="detail-query">{query.query_text}</pre>
