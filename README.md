@@ -50,20 +50,11 @@ the React UI hot-reloads and the Rust backend recompiles on change.
 
 ### Hook up the capture shims
 
-Out of the box, Kuery is a query browser with nothing to browse. The two
-shims are how queries actually land in the store:
-
-- **Chrome extension** — captures every query you run in the Azure Data
-  Explorer web UI. The welcome screen shows the path to the local
-  checkout with a copy button; load it as an unpacked extension in
-  `chrome://extensions`. Details in
-  [`chrome-extension/README.md`](chrome-extension/README.md).
-- **Copilot CLI plugin** — captures KQL run by Copilot CLI agents and
-  re-exposes your saved queries to them as MCP tools. Install with
-  `copilot plugin install timrogers/kuery:plugin` (or point it at your
-  local `plugin/` directory — see [`plugin/README.md`](plugin/README.md)).
-  The exact command, with a copy button, lives in **Settings → Copilot
-  CLI plugin**.
+On first launch, the welcome screen walks you through installing the
+Chrome extension (for capturing queries from the Azure Data Explorer web
+UI) and the Copilot CLI plugin (for capturing queries from agents) —
+copy-pasteable commands and paths included. You can revisit either set
+of instructions any time from **Settings**.
 
 ### Build a release binary
 
