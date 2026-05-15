@@ -69,3 +69,13 @@ export interface AgentSearchResult {
 export async function agentSearch(prompt: string): Promise<AgentSearchResult> {
   return invoke<AgentSearchResult>("agent_search", { prompt });
 }
+
+export interface DebugInfo {
+  log_file: string;
+  log_dir: string;
+  install_command: string;
+}
+
+export async function debugInfo(): Promise<DebugInfo> {
+  return invoke<DebugInfo>("debug_info");
+}

@@ -1,11 +1,14 @@
 import { useEffect, useState } from "react";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { openPath, revealItemInDir } from "@tauri-apps/plugin-opener";
 import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import {
+  debugInfo,
   exportDatabase,
   getSetting,
   importDatabase,
   setSetting,
+  type DebugInfo,
 } from "../api";
 
 interface Props {
@@ -19,13 +22,24 @@ export function SettingsModal({ onClose, onChanged }: Props) {
   const [token, setToken] = useState("");
   const [autostart, setAutostart] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
+  const [debug, setDebug] = useState<DebugInfo | null>(null);
 
   useEffect(() => {
     getSetting(TOKEN_KEY).then((v) => setToken(v ?? ""));
     isEnabled()
       .then((v) => setAutostart(v))
       .catch(() => {});
+    debugInfo().then(setDebug).catch(() => {});
   }, []);
+
+  async function copy(text: string, label: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setStatus(`Copied ${label} to clipboard.`);
+    } catch (e) {
+      setStatus(`Couldn't copy ${label}: ${e}`);
+    }
+  }
 
   async function saveToken() {
     await setSetting(TOKEN_KEY, token.trim() === "" ? null : token.trim());
@@ -125,6 +139,64 @@ export function SettingsModal({ onClose, onChanged }: Props) {
             <button onClick={exportDb}>Export</button>
             <button onClick={importDb}>Import</button>
           </div>
+        </section>
+
+        <section>
+          <h3>Copilot CLI plugin</h3>
+          <p className="hint">
+            Capture KQL run by AI agents and let them search your saved queries
+            via MCP. Install with:
+          </p>
+          <div className="row">
+            <code className="cli-snippet">
+              {debug?.install_command ?? "copilot plugin install timrogers/kuery:plugin"}
+            </code>
+            <button
+              onClick={() =>
+                copy(
+                  debug?.install_command ??
+                    "copilot plugin install timrogers/kuery:plugin",
+                  "install command",
+                )
+              }
+            >
+              Copy
+            </button>
+          </div>
+          <p className="hint">
+            Requires{" "}
+            <a href="https://docs.github.com/en/copilot/concepts/agents/copilot-cli" target="_blank">
+              GitHub Copilot CLI
+            </a>
+            . Run the command in your terminal — restart any active{" "}
+            <code>copilot</code> sessions afterwards.
+          </p>
+        </section>
+
+        <section>
+          <h3>Logs</h3>
+          <p className="hint">
+            Persistent logs for the HTTP API and MCP server. Useful when the
+            extension or CLI plugin isn't reaching Kuery.
+          </p>
+          {debug && (
+            <>
+              <div className="row">
+                <code className="cli-snippet">{debug.log_file}</code>
+              </div>
+              <div className="row">
+                <button onClick={() => openPath(debug.log_file)}>
+                  Open log file
+                </button>
+                <button onClick={() => revealItemInDir(debug.log_file)}>
+                  Show in folder
+                </button>
+                <button onClick={() => copy(debug.log_file, "log path")}>
+                  Copy path
+                </button>
+              </div>
+            </>
+          )}
         </section>
 
         {status && <div className="status">{status}</div>}

@@ -134,3 +134,19 @@ pub async fn agent_search(
         .await
         .map_err(|e| CommandError { message: e.to_string() })
 }
+
+#[derive(Serialize)]
+pub struct DebugInfo {
+    pub log_file: String,
+    pub log_dir: String,
+    pub install_command: String,
+}
+
+#[tauri::command]
+pub fn debug_info(paths: State<'_, crate::LogPaths>) -> CmdResult<DebugInfo> {
+    Ok(DebugInfo {
+        log_file: paths.file.to_string_lossy().to_string(),
+        log_dir: paths.dir.to_string_lossy().to_string(),
+        install_command: crate::COPILOT_PLUGIN_INSTALL_COMMAND.to_string(),
+    })
+}

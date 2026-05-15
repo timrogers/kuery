@@ -82,7 +82,17 @@ soon as the app is up. To install the optional pieces:
 
 - **Chrome extension** — see `chrome-extension/README.md`.
 - **Copilot CLI plugin** — `copilot plugin install timrogers/kuery:plugin`
-  (see `plugin/README.md`).
+  (see `plugin/README.md`). The same install command, plus a copy
+  button, lives in **Settings → Copilot CLI plugin**.
+
+## Debugging
+
+The HTTP API and MCP server log to a persistent file at
+`<app data>/logs/kuery.log` (e.g. `~/Library/Application
+Support/com.caffeinesoftware.kuery/logs/kuery.log` on macOS). **Settings
+→ Logs** has buttons to open the file, reveal it in the file manager, or
+copy the path. Set `RUST_LOG=debug` in the environment to crank up
+verbosity.
 
 ## Background mode
 

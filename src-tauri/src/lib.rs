@@ -12,7 +12,26 @@ use tauri::{
     Manager,
 };
 use tauri_plugin_autostart::MacosLauncher;
-use tracing_subscriber::EnvFilter;
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt, EnvFilter};
+
+/// Stable file name for the persistent log; matched by `LogPaths::file`.
+const LOG_FILE_NAME: &str = "kuery.log";
+
+/// Canonical Copilot CLI install command, surfaced in the Settings UI.
+pub const COPILOT_PLUGIN_INSTALL_COMMAND: &str =
+    "copilot plugin install timrogers/kuery:plugin";
+
+/// Filesystem locations of the persistent logs, made available to IPC commands
+/// via Tauri state so the frontend can show / open them.
+#[derive(Clone)]
+pub struct LogPaths {
+    pub dir: std::path::PathBuf,
+    pub file: std::path::PathBuf,
+}
+
+/// Holds the non-blocking appender's worker guard so it isn't dropped before
+/// the app exits (which would silently swallow buffered log lines).
+pub struct LoggingGuard(#[allow(dead_code)] tracing_appender::non_blocking::WorkerGuard);
 
 fn show_main_window(app: &tauri::AppHandle) {
     #[cfg(target_os = "macos")]
@@ -45,12 +64,6 @@ fn hide_main_window(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let _ = tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info")),
-        )
-        .try_init();
-
     tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
             // Re-launching the binary just brings the existing window forward.
@@ -89,6 +102,36 @@ pub fn run() {
                 .app_data_dir()
                 .expect("resolving app data dir");
             std::fs::create_dir_all(&data_dir).expect("creating app data dir");
+
+            // Persistent logging — file goes in `<app_data>/logs/kuery.log` so
+            // users can open it from the Settings UI for debugging. We keep
+            // stderr too so `cargo tauri dev` is still useful.
+            let log_dir = data_dir.join("logs");
+            std::fs::create_dir_all(&log_dir).expect("creating log dir");
+            let file_appender =
+                tracing_appender::rolling::never(&log_dir, LOG_FILE_NAME);
+            let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
+            let env_filter = EnvFilter::try_from_default_env()
+                .unwrap_or_else(|_| EnvFilter::new("info"));
+            let _ = tracing_subscriber::registry()
+                .with(env_filter)
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .with_writer(std::io::stderr)
+                        .with_ansi(true),
+                )
+                .with(
+                    tracing_subscriber::fmt::layer()
+                        .with_writer(file_writer)
+                        .with_ansi(false),
+                )
+                .try_init();
+            app.manage(LoggingGuard(guard));
+            app.manage(LogPaths {
+                dir: log_dir,
+                file: data_dir.join("logs").join(LOG_FILE_NAME),
+            });
+
             let db_path = data_dir.join("kuery.sqlite");
 
             let store = store::Store::open(&db_path).expect("opening sqlite store");
@@ -156,6 +199,7 @@ pub fn run() {
             ipc::export_database,
             ipc::import_database,
             ipc::agent_search,
+            ipc::debug_info,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

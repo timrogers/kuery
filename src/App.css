@@ -372,6 +372,19 @@ input:focus {
 .modal .row input {
   flex: 1;
 }
+.modal .row .cli-snippet {
+  flex: 1;
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+  padding: 6px 10px;
+  background: var(--bg-subtle);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+  color: var(--text);
+}
 .status {
   margin-top: 14px;
   padding: 8px 12px;
