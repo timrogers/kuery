@@ -28,6 +28,19 @@ export function SettingsModal({ onClose, onChanged }: Props) {
     debugInfo().then(setDebug).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      if (showWelcome) {
+        setShowWelcome(false);
+      } else {
+        onClose();
+      }
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showWelcome, onClose]);
+
   async function copy(text: string, label: string) {
     try {
       await navigator.clipboard.writeText(text);
