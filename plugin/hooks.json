@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "hooks": {
+    "postToolUse": [
+      {
+        "type": "http",
+        "url": "http://127.0.0.1:47821/v1/hooks/copilot-cli",
+        "headers": {
+          "X-Kuery-Source": "copilot-cli"
+        },
+        "timeoutSec": 5
+      }
+    ]
+  }
+}

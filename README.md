@@ -37,8 +37,9 @@ forward queries over HTTP.
   toggle, settings, and import/export.
 - **Chrome capture shim** (`chrome-extension/`): MV3 extension that
   intercepts ADX query requests and POSTs them to the local app.
-- **Copilot CLI hook** (`hooks/copilot-cli/`): `postToolUse` script that
-  captures KQL run by AI agents through a Kusto MCP server.
+- **Copilot CLI plugin** (`plugin/`): one-line install (`copilot plugin
+  install timrogers/kuery:plugin`) that captures KQL run by AI agents
+  through a Kusto MCP server.
 
 ## HTTP API surface
 
@@ -46,11 +47,12 @@ Bound to `127.0.0.1:47821` only. There is intentionally no read-side HTTP
 API — the UI uses Tauri IPC and the MCP server runs in-process — so a
 local process can append queries but cannot read or destroy your history.
 
-| Method | Path           | Description                                          |
-|--------|----------------|------------------------------------------------------|
-| GET    | `/v1/health`   | Liveness check                                       |
-| POST   | `/v1/queries`  | Ingest a single query (`{query_text, cluster?, database?, source}`) |
-| POST   | `/mcp`         | JSON-RPC 2.0 MCP endpoint                            |
+| Method | Path                      | Description                                          |
+|--------|---------------------------|------------------------------------------------------|
+| GET    | `/v1/health`              | Liveness check                                       |
+| POST   | `/v1/queries`             | Ingest a single query (`{query_text, cluster?, database?, source}`) |
+| POST   | `/v1/hooks/copilot-cli`   | `postToolUse` payload sink for the Copilot CLI plugin |
+| POST   | `/mcp`                    | JSON-RPC 2.0 MCP endpoint                            |
 
 ## MCP tools
 
@@ -75,7 +77,8 @@ The desktop window opens; the HTTP server binds to `127.0.0.1:47821` as
 soon as the app is up. To install the optional pieces:
 
 - **Chrome extension** — see `chrome-extension/README.md`.
-- **Copilot CLI hook** — see `hooks/copilot-cli/README.md`.
+- **Copilot CLI plugin** — `copilot plugin install timrogers/kuery:plugin`
+  (see `plugin/README.md`).
 
 ## Background mode
 
