@@ -99,9 +99,8 @@ CREATE TABLE IF NOT EXISTS settings (
 impl Store {
     pub fn open(path: &Path) -> Result<Self> {
         if let Some(parent) = path.parent() {
-            std::fs::create_dir_all(parent).with_context(|| {
-                format!("creating data directory {}", parent.display())
-            })?;
+            std::fs::create_dir_all(parent)
+                .with_context(|| format!("creating data directory {}", parent.display()))?;
         }
 
         let manager = SqliteConnectionManager::file(path).with_init(|c| {
@@ -118,7 +117,9 @@ impl Store {
         let conn = pool.get()?;
         conn.execute_batch(SCHEMA_SQL).context("running schema")?;
 
-        Ok(Self { pool: Arc::new(pool) })
+        Ok(Self {
+            pool: Arc::new(pool),
+        })
     }
 
     /// Ingest a query. Returns `None` if the query was filtered out (e.g.
@@ -152,7 +153,11 @@ impl Store {
                 "UPDATE queries SET run_count = run_count + 1, last_seen_at = ?2 WHERE id = ?1",
                 params![id, now],
             )?;
-            Ok(Some(IngestResult { id, created: false, run_count: run_count + 1 }))
+            Ok(Some(IngestResult {
+                id,
+                created: false,
+                run_count: run_count + 1,
+            }))
         } else {
             conn.execute(
                 "INSERT INTO queries
@@ -161,7 +166,11 @@ impl Store {
                 params![q.query_text, q.cluster, q.database, q.source, now, hash],
             )?;
             let id = conn.last_insert_rowid();
-            Ok(Some(IngestResult { id, created: true, run_count: 1 }))
+            Ok(Some(IngestResult {
+                id,
+                created: true,
+                run_count: 1,
+            }))
         }
     }
 
@@ -285,14 +294,20 @@ impl Store {
         let mut have = std::collections::HashSet::<String>::new();
         let mut info = src.prepare("PRAGMA table_info(queries)")?;
         let rows = info.query_map([], |r| r.get::<_, String>(1))?;
-        for r in rows { have.insert(r?); }
+        for r in rows {
+            have.insert(r?);
+        }
 
         if !have.contains("query_text") {
             anyhow::bail!("file does not look like a Kuery legacy database");
         }
 
         let pick = |col: &str, fallback_sql: &str| -> String {
-            if have.contains(col) { col.to_string() } else { fallback_sql.to_string() }
+            if have.contains(col) {
+                col.to_string()
+            } else {
+                fallback_sql.to_string()
+            }
         };
         let select_sql = format!(
             "SELECT
@@ -305,13 +320,13 @@ impl Store {
                 {last_used}  AS last_used_at,
                 {starred_at} AS starred_at
              FROM queries",
-            cluster     = pick("cluster_name", "NULL"),
-            database    = pick("database_name", "NULL"),
+            cluster = pick("cluster_name", "NULL"),
+            database = pick("database_name", "NULL"),
             description = pick("description", "NULL"),
-            runs_count  = pick("runs_count", "1"),
-            created_at  = pick("created_at", "CURRENT_TIMESTAMP"),
-            last_used   = pick("last_used_at", "CURRENT_TIMESTAMP"),
-            starred_at  = pick("starred_at", "NULL"),
+            runs_count = pick("runs_count", "1"),
+            created_at = pick("created_at", "CURRENT_TIMESTAMP"),
+            last_used = pick("last_used_at", "CURRENT_TIMESTAMP"),
+            starred_at = pick("starred_at", "NULL"),
         );
 
         let mut stmt = src.prepare(&select_sql)?;
@@ -331,14 +346,17 @@ impl Store {
             let starred_at: Option<String> = r.get(7)?;
 
             let normalized = normalize_query(&query_text);
-            if normalized.is_empty() { summary.skipped += 1; continue; }
+            if normalized.is_empty() {
+                summary.skipped += 1;
+                continue;
+            }
             let hash = compute_hash(
                 &normalized,
                 cluster.as_deref().unwrap_or(""),
                 database.as_deref().unwrap_or(""),
             );
             let first = created_at.unwrap_or_else(|| Utc::now().to_rfc3339());
-            let last  = last_used_at.unwrap_or_else(|| first.clone());
+            let last = last_used_at.unwrap_or_else(|| first.clone());
             let starred = starred_at.is_some();
             let desc = description.filter(|d| !d.is_empty() && d != "Untitled");
 
@@ -353,9 +371,9 @@ impl Store {
             match existing {
                 Some((id, run_count, cur_first, cur_last, cur_desc, cur_starred)) => {
                     let new_first = std::cmp::min(cur_first.clone(), first.clone());
-                    let new_last  = std::cmp::max(cur_last.clone(),  last.clone());
-                    let new_run   = run_count + runs_count;
-                    let new_desc  = cur_desc.or(desc);
+                    let new_last = std::cmp::max(cur_last.clone(), last.clone());
+                    let new_run = run_count + runs_count;
+                    let new_desc = cur_desc.or(desc);
                     let new_starred = if cur_starred != 0 || starred { 1 } else { 0 };
                     tx.execute(
                         "UPDATE queries
@@ -522,12 +540,18 @@ mod tests {
         let (s, _d) = open_temp();
         s.ingest(&NewQuery {
             query_text: "StormEvents | where State == 'TEXAS' | take 5".into(),
-            cluster: None, database: None, source: "manual".into(),
-        }).unwrap();
+            cluster: None,
+            database: None,
+            source: "manual".into(),
+        })
+        .unwrap();
         s.ingest(&NewQuery {
             query_text: "PageViews | summarize count() by bin(timestamp, 1d)".into(),
-            cluster: None, database: None, source: "manual".into(),
-        }).unwrap();
+            cluster: None,
+            database: None,
+            source: "manual".into(),
+        })
+        .unwrap();
 
         let hits = s.search("StormEvents", 10, false).unwrap();
         assert_eq!(hits.len(), 1);
@@ -537,11 +561,23 @@ mod tests {
     #[test]
     fn star_and_update() {
         let (s, _d) = open_temp();
-        let r = s.ingest(&NewQuery {
-            query_text: "T | count".into(),
-            cluster: None, database: None, source: "manual".into(),
-        }).unwrap().unwrap();
-        s.update(r.id, &UpdateQuery { starred: Some(true), description: Some(Some("counts T".into())) }).unwrap();
+        let r = s
+            .ingest(&NewQuery {
+                query_text: "T | count".into(),
+                cluster: None,
+                database: None,
+                source: "manual".into(),
+            })
+            .unwrap()
+            .unwrap();
+        s.update(
+            r.id,
+            &UpdateQuery {
+                starred: Some(true),
+                description: Some(Some("counts T".into())),
+            },
+        )
+        .unwrap();
         let q = s.get(r.id).unwrap().unwrap();
         assert!(q.starred);
         assert_eq!(q.description.as_deref(), Some("counts T"));
@@ -573,12 +609,14 @@ mod tests {
 
         let store = Store::open(&dir.path().join("kuery.sqlite")).unwrap();
         // Pre-existing row that should merge.
-        store.ingest(&NewQuery {
-            query_text: "StormEvents | take 5".into(),
-            cluster: Some("help".into()),
-            database: Some("Samples".into()),
-            source: "manual".into(),
-        }).unwrap();
+        store
+            .ingest(&NewQuery {
+                query_text: "StormEvents | take 5".into(),
+                cluster: Some("help".into()),
+                database: Some("Samples".into()),
+                source: "manual".into(),
+            })
+            .unwrap();
 
         let summary = store.import_legacy(&legacy_path).unwrap();
         assert_eq!(summary.imported, 1);
@@ -587,13 +625,19 @@ mod tests {
 
         let recent = store.list_recent(50).unwrap();
         assert_eq!(recent.len(), 2);
-        let storm = recent.iter().find(|q| q.query_text.contains("StormEvents")).unwrap();
+        let storm = recent
+            .iter()
+            .find(|q| q.query_text.contains("StormEvents"))
+            .unwrap();
         // 1 (manual) + 3 (legacy) = 4
         assert_eq!(storm.run_count, 4);
         assert!(storm.starred);
         assert_eq!(storm.description.as_deref(), Some("top events"));
 
-        let pv = recent.iter().find(|q| q.query_text.contains("PageViews")).unwrap();
+        let pv = recent
+            .iter()
+            .find(|q| q.query_text.contains("PageViews"))
+            .unwrap();
         // "Untitled" should be filtered.
         assert!(pv.description.is_none());
     }

@@ -25,8 +25,7 @@ const LOG_FILE_NAME: &str = "kuery.log";
 /// Canonical Copilot CLI install command for the published plugin. Used
 /// as a fallback when we can't find a usable local repo checkout (e.g.
 /// when someone runs a prebuilt binary on a machine without sources).
-pub const COPILOT_PLUGIN_INSTALL_COMMAND: &str =
-    "copilot plugin install timrogers/kuery:plugin";
+pub const COPILOT_PLUGIN_INSTALL_COMMAND: &str = "copilot plugin install timrogers/kuery:plugin";
 
 /// Returns the recommended `copilot plugin install` command for the
 /// running build.
@@ -131,7 +130,7 @@ pub fn run() {
                 } else {
                     tauri::ActivationPolicy::Regular
                 };
-                let _ = app.set_activation_policy(policy);
+                app.set_activation_policy(policy);
             }
             if launched_at_login {
                 if let Some(win) = app.get_webview_window("main") {
@@ -139,10 +138,7 @@ pub fn run() {
                 }
             }
 
-            let data_dir = app
-                .path()
-                .app_data_dir()
-                .expect("resolving app data dir");
+            let data_dir = app.path().app_data_dir().expect("resolving app data dir");
             std::fs::create_dir_all(&data_dir).expect("creating app data dir");
 
             // Persistent logging — file goes in `<app_data>/logs/kuery.log` so
@@ -150,11 +146,10 @@ pub fn run() {
             // stderr too so `cargo tauri dev` is still useful.
             let log_dir = data_dir.join("logs");
             std::fs::create_dir_all(&log_dir).expect("creating log dir");
-            let file_appender =
-                tracing_appender::rolling::never(&log_dir, LOG_FILE_NAME);
+            let file_appender = tracing_appender::rolling::never(&log_dir, LOG_FILE_NAME);
             let (file_writer, guard) = tracing_appender::non_blocking(file_appender);
-            let env_filter = EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| EnvFilter::new("info"));
+            let env_filter =
+                EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("info"));
             let _ = tracing_subscriber::registry()
                 .with(env_filter)
                 .with(

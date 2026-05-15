@@ -99,9 +99,9 @@ pub async fn search(
 
     progress(ProgressEvent::Starting);
 
-    let client = Client::start(ClientOptions::default())
-        .await
-        .context("failed to start Copilot CLI; install or update it with `npm install -g @github/copilot`")?;
+    let client = Client::start(ClientOptions::default()).await.context(
+        "failed to start Copilot CLI; install or update it with `npm install -g @github/copilot`",
+    )?;
 
     // Build the toolbox first. The agent only gets the search tool — it
     // can't ingest, update, delete, or hit anything outside the local
@@ -188,8 +188,12 @@ pub async fn search(
     event_task.abort();
 
     let event = final_event.ok_or_else(|| anyhow!("Copilot returned no assistant message"))?;
-    let text = extract_assistant_text(&event)
-        .ok_or_else(|| anyhow!("Copilot returned an unexpected event type: {}", event.event_type))?;
+    let text = extract_assistant_text(&event).ok_or_else(|| {
+        anyhow!(
+            "Copilot returned an unexpected event type: {}",
+            event.event_type
+        )
+    })?;
 
     let ids = extract_ids(&text)?;
     let queries = tokio::task::spawn_blocking(move || hydrate(&store, &ids))

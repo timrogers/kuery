@@ -10,7 +10,9 @@ pub struct CommandError {
 
 impl<E: std::fmt::Display> From<E> for CommandError {
     fn from(e: E) -> Self {
-        Self { message: e.to_string() }
+        Self {
+            message: e.to_string(),
+        }
     }
 }
 
@@ -110,15 +112,16 @@ pub fn import_database(
     }
     let summary = store
         .import_legacy(std::path::Path::new(&source_path))
-        .map_err(|e| CommandError { message: e.to_string() })?;
+        .map_err(|e| CommandError {
+            message: e.to_string(),
+        })?;
     Ok(summary)
 }
 
 fn db_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
-    let dir = app
-        .path()
-        .app_data_dir()
-        .map_err(|e| CommandError { message: e.to_string() })?;
+    let dir = app.path().app_data_dir().map_err(|e| CommandError {
+        message: e.to_string(),
+    })?;
     Ok(dir.join("kuery.sqlite"))
 }
 
@@ -139,7 +142,9 @@ pub async fn agent_search(
     });
     crate::agent::search(store, prompt, progress)
         .await
-        .map_err(|e| CommandError { message: e.to_string() })
+        .map_err(|e| CommandError {
+            message: e.to_string(),
+        })
 }
 
 #[derive(Serialize)]

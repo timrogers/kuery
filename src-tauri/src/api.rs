@@ -75,7 +75,11 @@ async fn ingest(
         return Ok((StatusCode::NO_CONTENT, ()).into_response());
     };
     if result.created {
-        crate::ai::describe_in_background(state.store.clone(), result.id, payload.query_text.clone());
+        crate::ai::describe_in_background(
+            state.store.clone(),
+            result.id,
+            payload.query_text.clone(),
+        );
     }
     Ok((
         StatusCode::CREATED,
@@ -95,7 +99,10 @@ struct ApiError {
 
 impl ApiError {
     fn bad_request(msg: impl Into<String>) -> Self {
-        Self { status: StatusCode::BAD_REQUEST, message: msg.into() }
+        Self {
+            status: StatusCode::BAD_REQUEST,
+            message: msg.into(),
+        }
     }
 }
 

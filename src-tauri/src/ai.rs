@@ -83,8 +83,12 @@ async fn describe(store: &Store, id: i64, query_text: &str) -> Result<()> {
 
     let final_event = result.context("Copilot session failed during description")?;
     let event = final_event.ok_or_else(|| anyhow!("Copilot returned no assistant message"))?;
-    let text = extract_assistant_text(&event)
-        .ok_or_else(|| anyhow!("Copilot returned an unexpected event type: {}", event.event_type))?;
+    let text = extract_assistant_text(&event).ok_or_else(|| {
+        anyhow!(
+            "Copilot returned an unexpected event type: {}",
+            event.event_type
+        )
+    })?;
 
     let summary = sanitize_summary(&text);
     if summary.is_empty() {
@@ -119,7 +123,7 @@ fn sanitize_summary(raw: &str) -> String {
     let trimmed = raw
         .trim()
         .trim_matches(|c: char| c == '"' || c == '\'' || c == '`')
-        .trim_end_matches(|c: char| c == '.' || c == ',' || c == ';');
+        .trim_end_matches(['.', ',', ';']);
     let mut words = trimmed.split_whitespace();
     let mut out = String::new();
     for (i, w) in (&mut words).take(MAX_WORDS).enumerate() {
@@ -148,17 +152,20 @@ fn clean_query(s: &str) -> String {
             continue;
         }
         // Strip // and -- line comments
-        if (c == '/' && chars.peek() == Some(&'/'))
-            || (c == '-' && chars.peek() == Some(&'-'))
-        {
+        if (c == '/' && chars.peek() == Some(&'/')) || (c == '-' && chars.peek() == Some(&'-')) {
             while let Some(&cc) = chars.peek() {
-                if cc == '\n' { break; }
+                if cc == '\n' {
+                    break;
+                }
                 chars.next();
             }
             continue;
         }
         if c.is_whitespace() {
-            if !prev_ws { out.push(' '); prev_ws = true; }
+            if !prev_ws {
+                out.push(' ');
+                prev_ws = true;
+            }
         } else {
             out.push(c);
             prev_ws = false;
@@ -179,7 +186,10 @@ mod tests {
 
     #[test]
     fn sanitize_strips_quotes_and_trailing_punctuation() {
-        assert_eq!(sanitize_summary("  \"counts errors per service.\"  "), "counts errors per service");
+        assert_eq!(
+            sanitize_summary("  \"counts errors per service.\"  "),
+            "counts errors per service"
+        );
     }
 
     #[test]

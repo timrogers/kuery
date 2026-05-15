@@ -118,7 +118,10 @@ fn tools_call(store: &Store, params: &Value) -> Result<Value, (i64, String)> {
         "search_queries" => {
             let q = args.get("query").and_then(Value::as_str).unwrap_or("");
             let limit = args.get("limit").and_then(Value::as_i64).unwrap_or(20);
-            let starred = args.get("starred_only").and_then(Value::as_bool).unwrap_or(false);
+            let starred = args
+                .get("starred_only")
+                .and_then(Value::as_bool)
+                .unwrap_or(false);
             store
                 .search(q, limit, starred)
                 .map(|rows| json!(rows))
@@ -133,11 +136,17 @@ fn tools_call(store: &Store, params: &Value) -> Result<Value, (i64, String)> {
         }
         "list_recent_queries" => {
             let limit = args.get("limit").and_then(Value::as_i64).unwrap_or(20);
-            store.list_recent(limit).map(|r| json!(r)).map_err(internal)?
+            store
+                .list_recent(limit)
+                .map(|r| json!(r))
+                .map_err(internal)?
         }
         "list_starred_queries" => {
             let limit = args.get("limit").and_then(Value::as_i64).unwrap_or(50);
-            store.list_starred(limit).map(|r| json!(r)).map_err(internal)?
+            store
+                .list_starred(limit)
+                .map(|r| json!(r))
+                .map_err(internal)?
         }
         other => return Err((-32602, format!("unknown tool: {other}"))),
     };
