@@ -18,8 +18,10 @@ copilot plugin install ./plugin
 
 ## How it works
 
-The plugin registers a single `postToolUse` HTTP hook. After every tool
-call, Copilot CLI POSTs the event payload to the Kuery desktop app at
+The plugin registers a single `postToolUse` command hook. After every
+tool call, Copilot CLI pipes the event payload as JSON over stdin to a
+small inline shell command (`bash` on macOS/Linux, `powershell` on
+Windows) that POSTs the body unchanged to the Kuery desktop app at
 `http://127.0.0.1:47821/v1/hooks/copilot-cli`. The desktop app:
 
 - Ignores anything that isn't a Kusto KQL query (`kusto_query` or
@@ -30,7 +32,11 @@ call, Copilot CLI POSTs the event payload to the Kuery desktop app at
   queries apart from your own in the UI.
 
 The Kuery desktop app must be running for queries to be captured. If
-it isn't, the hook silently times out — agent runs are never blocked.
+it isn't, the hook silently fails — agent runs are never blocked.
+
+> Why a command hook instead of an HTTP hook? Copilot CLI's HTTP hooks
+> refuse to target loopback addresses, so the plugin shells out to
+> `curl` (or `Invoke-RestMethod`) which has no such restriction.
 
 ## Uninstall
 
