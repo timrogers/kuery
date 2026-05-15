@@ -469,6 +469,40 @@ input:focus {
 .empty-state-card .row + .hint {
   margin-top: 10px;
 }
+.empty-state-card .setup-list {
+  list-style: none;
+  margin: 18px 0 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.empty-state-card .setup-step {
+  display: grid;
+  grid-template-columns: 36px 1fr;
+  gap: 14px;
+  align-items: start;
+}
+.empty-state-card .setup-step-number {
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: var(--accent, #2f6feb);
+  color: #fff;
+  font-weight: 600;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.empty-state-card .setup-step-body h3 {
+  margin: 4px 0 6px 0;
+  font-size: 15px;
+}
+.empty-state-card .setup-step-body > .hint:last-child {
+  margin-bottom: 0;
+}
 .empty-state-card .cli-snippet {
   flex: 1;
   display: block;
