@@ -180,7 +180,7 @@ input:focus {
   gap: 8px;
   flex-wrap: wrap;
 }
-.query-item-meta > * + *::before {
+.query-item-meta > * + *:not(.source)::before {
   content: "·";
   margin-right: 8px;
   color: var(--text-muted);
