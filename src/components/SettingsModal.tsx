@@ -15,11 +15,12 @@ import {
 interface Props {
   onClose: () => void;
   onChanged: () => void;
+  onShowWelcome: () => void;
 }
 
 const TOKEN_KEY = "github_models_token";
 
-export function SettingsModal({ onClose, onChanged }: Props) {
+export function SettingsModal({ onClose, onChanged, onShowWelcome }: Props) {
   const [token, setToken] = useState("");
   const [autostart, setAutostart] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
@@ -234,6 +235,24 @@ export function SettingsModal({ onClose, onChanged }: Props) {
               </div>
             </>
           )}
+        </section>
+
+        <section>
+          <h3>Help</h3>
+          <p className="hint">
+            Walk through the setup guide again — capturing queries from
+            Chrome and from the Copilot CLI.
+          </p>
+          <div className="row">
+            <button
+              onClick={() => {
+                onShowWelcome();
+                onClose();
+              }}
+            >
+              Show welcome guide
+            </button>
+          </div>
         </section>
 
         {status && <div className="status">{status}</div>}

@@ -234,6 +234,7 @@ function App() {
         <SettingsModal
           onClose={() => setShowSettings(false)}
           onChanged={reload}
+          onShowWelcome={() => setShowWelcome(true)}
         />
       )}
 
