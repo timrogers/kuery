@@ -162,21 +162,6 @@ MCP server are always available.
   the tray.
 - Running the app a second time just focuses the existing window.
 
-## Importing legacy data
-
-Settings → Import database… and pick your old `kuery.sqlite`. Schemas are
-mapped automatically (`runs_count` → `run_count`, `starred_at` → `starred`,
-etc.) and rows are merged by query text + cluster + database. A backup of
-the current database is taken before merge.
-
-## AI descriptions
-
-When a brand-new query is captured the app spins up a short-lived Copilot CLI
-session (`gpt-5.4-mini`) and asks it to write a one-line summary, which is
-saved on the row and indexed alongside the query text for search. If the
-Copilot CLI isn't installed or the user isn't logged in the step is skipped
-silently — the query is still captured.
-
 ## Tests
 
 Backend has a Rust test suite covering the store, ingest validation, MCP
