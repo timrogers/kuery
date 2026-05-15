@@ -163,15 +163,15 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
           {copyState && <span className="hint">{copyState}</span>}
           <button onClick={copyText}>Copy</button>
           <button
-            onClick={copyUrl}
+            onClick={() => adxUrl && window.open(adxUrl, "_blank")}
             disabled={!canCopyUrl}
             title={
               canCopyUrl
-                ? "Copy an Azure Data Explorer share URL that opens this query"
-                : "Cluster and database are required to build an Azure Data Explorer URL"
+                ? "Open this query in Azure Data Explorer"
+                : "Cluster and database are required to open in Azure Data Explorer"
             }
           >
-            Copy Azure Data Explorer URL
+            Open in Azure Data Explorer
           </button>
         </div>
       </div>
