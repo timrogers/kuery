@@ -58,11 +58,8 @@ export function QueryList({
           <div className="query-item-snippet">{truncate(q.query_text, 120)}</div>
           <div className="query-item-meta">
             <span>{q.cluster ?? "no cluster"}</span>
-            <span>·</span>
             <span>{q.database ?? "no db"}</span>
-            <span>·</span>
             <span>{relativeTime(q.last_seen_at)}</span>
-            <span>·</span>
             <span className={"source source-" + q.source}>{q.source}</span>
           </div>
         </li>

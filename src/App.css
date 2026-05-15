@@ -177,8 +177,13 @@ input:focus {
   color: var(--text-muted);
   font-size: 11px;
   display: flex;
-  gap: 6px;
+  gap: 8px;
   flex-wrap: wrap;
+}
+.query-item-meta > * + *::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--text-muted);
 }
 .run-count {
   background: var(--bg-subtle);
