@@ -34,6 +34,10 @@ You'll need:
 - **Node 20+** and **pnpm**
 - **Rust 1.80+** (stable)
 - **Xcode command line tools** — `xcode-select --install`
+- **[GitHub Copilot CLI](https://docs.github.com/en/copilot/concepts/agents/about-copilot-cli)**
+  — used for AI descriptions, smart search, and the optional Copilot CLI
+  capture plugin. The app still runs without it; you just lose those
+  features.
 
 Clone the repo and build a real `.app` you can keep around:
 
