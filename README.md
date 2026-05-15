@@ -63,15 +63,9 @@ of instructions any time from **Settings**.
 
 ### Hacking on Kuery
 
-If you want to make changes, run the dev build instead:
-
-```bash
-pnpm tauri dev
-```
-
-The React UI hot-reloads and the Rust backend recompiles on save. See
-[`AGENTS.md`](AGENTS.md) for repo layout, conventions, and the lint /
-test commands CI runs.
+Want to make changes? See [`CONTRIBUTING.md`](CONTRIBUTING.md) for the
+dev build, tests, lint, and the HTTP/MCP surface, plus
+[`AGENTS.md`](AGENTS.md) for repo layout and conventions.
 
 ## Architecture
 
@@ -116,19 +110,6 @@ flowchart LR
   recall, recent, starred) so the agent can also re-use your saved
   queries.
 
-## HTTP API surface
-
-Bound to `127.0.0.1:47821` only. There is intentionally no read-side HTTP
-API — the UI uses Tauri IPC and the MCP server runs in-process — so a
-local process can append queries but cannot read or destroy your history.
-
-| Method | Path                      | Description                                          |
-|--------|---------------------------|------------------------------------------------------|
-| GET    | `/v1/health`              | Liveness check                                       |
-| POST   | `/v1/queries`             | Ingest a single query (`{query_text, cluster?, database?, source}`) |
-| POST   | `/v1/hooks/copilot-cli`   | `postToolUse` payload sink for the Copilot CLI plugin |
-| POST   | `/mcp`                    | JSON-RPC 2.0 MCP endpoint                            |
-
 ## MCP tools
 
 Available to any MCP client that can talk to a Streamable HTTP transport at
@@ -138,15 +119,6 @@ Available to any MCP client that can talk to a Streamable HTTP transport at
 - `get_query(id)`
 - `list_recent_queries(limit?)`
 - `list_starred_queries(limit?)`
-
-## Debugging
-
-The HTTP API and MCP server log to a persistent file at
-`<app data>/logs/kuery.log` (e.g. `~/Library/Application
-Support/com.caffeinesoftware.kuery/logs/kuery.log` on macOS). **Settings
-→ Logs** has buttons to open the file, reveal it in the file manager, or
-copy the path. Set `RUST_LOG=debug` in the environment to crank up
-verbosity.
 
 ## Background mode
 
@@ -161,18 +133,6 @@ MCP server are always available.
   When launched at login the window stays hidden until you open it from
   the tray.
 - Running the app a second time just focuses the existing window.
-
-## Tests
-
-Backend has a Rust test suite covering the store, ingest validation, MCP
-JSON-RPC dispatch, and the legacy import path:
-
-```bash
-cd src-tauri && cargo test
-```
-
-There is no front-end test suite yet — `pnpm build` runs `tsc` as a type
-check.
 
 ## License
 
