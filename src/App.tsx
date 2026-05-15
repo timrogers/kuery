@@ -1,50 +1,126 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
+import { useCallback, useEffect, useState } from "react";
+import { QueryList } from "./components/QueryList";
+import { QueryDetail } from "./components/QueryDetail";
+import { SettingsModal } from "./components/SettingsModal";
+import { useDebounced } from "./hooks";
+import {
+  deleteQuery,
+  searchQueries,
+  updateQuery,
+} from "./api";
+import type { Query } from "./types";
 import "./App.css";
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [search, setSearch] = useState("");
+  const [starredOnly, setStarredOnly] = useState(false);
+  const [queries, setQueries] = useState<Query[]>([]);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [showSettings, setShowSettings] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-    setGreetMsg(await invoke("greet", { name }));
+  const debouncedSearch = useDebounced(search, 200);
+
+  const reload = useCallback(async () => {
+    try {
+      const rows = await searchQueries(debouncedSearch, starredOnly, 200);
+      setQueries(rows);
+      setError(null);
+      if (rows.length > 0 && !rows.some((q) => q.id === selectedId)) {
+        setSelectedId(rows[0].id);
+      } else if (rows.length === 0) {
+        setSelectedId(null);
+      }
+    } catch (e) {
+      setError(String(e));
+    }
+  }, [debouncedSearch, starredOnly, selectedId]);
+
+  useEffect(() => {
+    reload();
+  }, [debouncedSearch, starredOnly]);
+
+  // Periodically refresh so newly captured queries appear without manual reload.
+  useEffect(() => {
+    const id = setInterval(reload, 5000);
+    return () => clearInterval(id);
+  }, [reload]);
+
+  const selected = queries.find((q) => q.id === selectedId) ?? null;
+
+  async function toggleStar(q: Query) {
+    await updateQuery(q.id, { starred: !q.starred });
+    reload();
+  }
+
+  async function patchSelected(patch: { description?: string | null; starred?: boolean }) {
+    if (!selected) return;
+    await updateQuery(selected.id, patch);
+    reload();
+  }
+
+  async function deleteSelected() {
+    if (!selected) return;
+    if (!confirm("Delete this query?")) return;
+    await deleteQuery(selected.id);
+    setSelectedId(null);
+    reload();
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
-
-      <div className="row">
-        <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
-        </a>
-        <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
-
-      <form
-        className="row"
-        onSubmit={(e) => {
-          e.preventDefault();
-          greet();
-        }}
-      >
+    <div className="app">
+      <header className="app-header">
+        <div className="brand">Kuery</div>
         <input
-          id="greet-input"
-          onChange={(e) => setName(e.currentTarget.value)}
-          placeholder="Enter a name..."
+          className="search-input"
+          placeholder="Search queries…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
         />
-        <button type="submit">Greet</button>
-      </form>
-      <p>{greetMsg}</p>
-    </main>
+        <label className="filter-toggle">
+          <input
+            type="checkbox"
+            checked={starredOnly}
+            onChange={(e) => setStarredOnly(e.target.checked)}
+          />
+          Starred only
+        </label>
+        <button onClick={() => setShowSettings(true)}>Settings</button>
+      </header>
+
+      {error && <div className="error">{error}</div>}
+
+      <div className="app-body">
+        <aside className="sidebar">
+          <QueryList
+            queries={queries}
+            selectedId={selectedId}
+            onSelect={(q) => setSelectedId(q.id)}
+            onToggleStar={toggleStar}
+            searchTerm={debouncedSearch}
+            starredOnly={starredOnly}
+          />
+        </aside>
+        <main className="main">
+          {selected ? (
+            <QueryDetail
+              query={selected}
+              onUpdate={patchSelected}
+              onDelete={deleteSelected}
+            />
+          ) : (
+            <div className="empty">Select a query to see details.</div>
+          )}
+        </main>
+      </div>
+
+      {showSettings && (
+        <SettingsModal
+          onClose={() => setShowSettings(false)}
+          onChanged={reload}
+        />
+      )}
+    </div>
   );
 }
 
