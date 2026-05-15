@@ -38,8 +38,10 @@ forward queries over HTTP.
 - **Chrome capture shim** (`chrome-extension/`): MV3 extension that
   intercepts ADX query requests and POSTs them to the local app.
 - **Copilot CLI plugin** (`plugin/`): one-line install (`copilot plugin
-  install timrogers/kuery:plugin`) that captures KQL run by AI agents
-  through a Kusto MCP server.
+  install timrogers/kuery:plugin`). Captures KQL run by the agent via a
+  Kusto MCP server, and exposes the local Kuery MCP server (search,
+  recall, recent, starred) so the agent can also re-use your saved
+  queries.
 
 ## HTTP API surface
 

@@ -9,5 +9,6 @@
   "repository": "https://github.com/timrogers/kuery",
   "license": "MIT",
   "keywords": ["kusto", "kql", "kuery", "azure-data-explorer"],
-  "hooks": "hooks.json"
+  "hooks": "hooks.json",
+  "mcpServers": "mcp.json"
 }
