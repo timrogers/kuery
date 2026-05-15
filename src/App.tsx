@@ -6,6 +6,7 @@ import { WelcomeModal } from "./components/WelcomeModal";
 import { useDebounced } from "./hooks";
 import {
   agentSearch,
+  type AgentProgress,
   deleteQuery,
   getSetting,
   searchQueries,
@@ -19,6 +20,7 @@ function App() {
   const [starredOnly, setStarredOnly] = useState(false);
   const [smartMode, setSmartMode] = useState(false);
   const [smartLoading, setSmartLoading] = useState(false);
+  const [smartProgress, setSmartProgress] = useState<string | null>(null);
   const [smartMessage, setSmartMessage] = useState<string | null>(null);
   const [queries, setQueries] = useState<Query[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -103,14 +105,34 @@ function App() {
     });
   }
 
+  function describeProgress(event: AgentProgress): string {
+    switch (event.kind) {
+      case "starting":
+        return "Starting Copilot…";
+      case "thinking":
+        return "Copilot is thinking…";
+      case "searching":
+        return event.text
+          ? `Searching for "${event.text}"…`
+          : "Listing recent queries…";
+      case "searched_found":
+        return event.text
+          ? `Found ${event.count} match${event.count === 1 ? "" : "es"} for "${event.text}"`
+          : `Listed ${event.count} recent quer${event.count === 1 ? "y" : "ies"}`;
+    }
+  }
+
   async function runSmartSearch() {
     const prompt = search.trim();
     if (!prompt || smartLoading) return;
     setSmartLoading(true);
     setSmartMessage(null);
+    setSmartProgress("Starting Copilot…");
     setError(null);
     try {
-      const result = await agentSearch(prompt);
+      const result = await agentSearch(prompt, (event) => {
+        setSmartProgress(describeProgress(event));
+      });
       setQueries(result.queries);
       setSelectedId(result.queries[0]?.id ?? null);
       setSmartMessage(
@@ -124,6 +146,7 @@ function App() {
       setSelectedId(null);
     } finally {
       setSmartLoading(false);
+      setSmartProgress(null);
     }
   }
 
@@ -173,7 +196,7 @@ function App() {
 
       {error && <div className="error">{error}</div>}
       {smartLoading && (
-        <div className="smart-status">Asking Copilot…</div>
+        <div className="smart-status">{smartProgress ?? "Asking Copilot…"}</div>
       )}
       {smartMessage && !smartLoading && (
         <div className="smart-status">{smartMessage}</div>

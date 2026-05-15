@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, Channel } from "@tauri-apps/api/core";
 import type { Query, UpdateQueryPatch } from "./types";
 
 export async function searchQueries(
@@ -66,8 +66,22 @@ export interface AgentSearchResult {
   assistant_message: string;
 }
 
-export async function agentSearch(prompt: string): Promise<AgentSearchResult> {
-  return invoke<AgentSearchResult>("agent_search", { prompt });
+export type AgentProgress =
+  | { kind: "starting" }
+  | { kind: "searching"; text: string }
+  | { kind: "searched_found"; text: string; count: number }
+  | { kind: "thinking" };
+
+export async function agentSearch(
+  prompt: string,
+  onProgress?: (event: AgentProgress) => void,
+): Promise<AgentSearchResult> {
+  const channel = new Channel<AgentProgress>();
+  if (onProgress) channel.onmessage = onProgress;
+  return invoke<AgentSearchResult>("agent_search", {
+    prompt,
+    onProgress: channel,
+  });
 }
 
 export interface DebugInfo {

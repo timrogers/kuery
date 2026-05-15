@@ -126,11 +126,18 @@ fn db_path(app: &AppHandle) -> Result<std::path::PathBuf, CommandError> {
 pub async fn agent_search(
     store: State<'_, Store>,
     prompt: String,
+    on_progress: tauri::ipc::Channel<crate::agent::ProgressEvent>,
 ) -> CmdResult<crate::agent::AgentSearchResult> {
     // Clone out of `State` so we can move into the spawned future without
     // borrowing the request guard across await points.
     let store = store.inner().clone();
-    crate::agent::search(store, prompt)
+    let progress: crate::agent::ProgressSink = std::sync::Arc::new(move |event| {
+        // Channel send only fails if the JS handle has been dropped — at
+        // worst we lose UI progress updates, the search itself is
+        // unaffected.
+        let _ = on_progress.send(event);
+    });
+    crate::agent::search(store, prompt, progress)
         .await
         .map_err(|e| CommandError { message: e.to_string() })
 }

@@ -18,15 +18,38 @@ use std::time::Duration;
 
 use anyhow::{anyhow, bail, Context, Result};
 use github_copilot_sdk::handler::ApproveAllHandler;
+use github_copilot_sdk::subscription::RecvError;
 use github_copilot_sdk::tool::{define_tool, ToolHandlerRouter};
 use github_copilot_sdk::{
     Client, ClientOptions, Error as SdkError, MessageOptions, SessionConfig, SystemMessageConfig,
     ToolResult,
 };
 use schemars::JsonSchema;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
 use crate::store::{Query, Store};
+
+/// Type-erased callback for streaming progress events out to the IPC layer.
+/// The IPC command wraps a Tauri `Channel<ProgressEvent>`; tests can pass a
+/// no-op closure.
+pub type ProgressSink = Arc<dyn Fn(ProgressEvent) + Send + Sync>;
+
+/// Best-effort progress notifications surfaced to the UI while a smart
+/// search is in flight. Designed to be displayed as a single rolling
+/// status line — newer events replace older ones.
+#[derive(Debug, Clone, Serialize)]
+#[serde(tag = "kind", rename_all = "snake_case")]
+pub enum ProgressEvent {
+    /// Copilot session is being created and the model hasn't replied yet.
+    Starting,
+    /// The agent issued a `find_queries` tool call. `text` is the search
+    /// term it picked (empty string for "list everything").
+    Searching { text: String },
+    /// The most recent `find_queries` call returned `count` rows.
+    SearchedFound { text: String, count: usize },
+    /// The model is composing its final reply now.
+    Thinking,
+}
 
 /// Cap on how many ranked IDs we expect from the agent. Our prompt asks for
 /// at most this many, but we also clamp on parse to avoid pathological
@@ -64,11 +87,17 @@ pub struct AgentSearchResult {
 /// background — it'd hold a CLI process, sockets, and a handler thread for
 /// a feature most users invoke sporadically. Each search spins up a fresh
 /// client; the SDK's startup is fast on a cached CLI binary.
-pub async fn search(store: Store, prompt: String) -> Result<AgentSearchResult> {
+pub async fn search(
+    store: Store,
+    prompt: String,
+    progress: ProgressSink,
+) -> Result<AgentSearchResult> {
     let prompt = prompt.trim().to_string();
     if prompt.is_empty() {
         bail!("Prompt is empty");
     }
+
+    progress(ProgressEvent::Starting);
 
     let client = Client::start(ClientOptions::default())
         .await
@@ -78,6 +107,7 @@ pub async fn search(store: Store, prompt: String) -> Result<AgentSearchResult> {
     // can't ingest, update, delete, or hit anything outside the local
     // store.
     let store_for_tool = store.clone();
+    let progress_for_tool = progress.clone();
     let router = ToolHandlerRouter::new(
         vec![define_tool(
             "find_queries",
@@ -89,15 +119,22 @@ pub async fn search(store: Store, prompt: String) -> Result<AgentSearchResult> {
              the most-recently-used queries, pass an empty `text` and a higher `limit`.",
             move |_inv, params: FindQueriesParams| {
                 let store = store_for_tool.clone();
+                let progress = progress_for_tool.clone();
                 async move {
                     let limit = params.limit.unwrap_or(20).clamp(1, TOOL_PAGE_SIZE);
                     let text = params.text.unwrap_or_default();
+                    progress(ProgressEvent::Searching { text: text.clone() });
+                    let search_text = text.clone();
                     let results = tokio::task::spawn_blocking(move || {
-                        store.search(&text, limit, false)
+                        store.search(&search_text, limit, false)
                     })
                     .await
                     .map_err(tool_error)?
                     .map_err(tool_error)?;
+                    progress(ProgressEvent::SearchedFound {
+                        text,
+                        count: results.len(),
+                    });
                     let json = serde_json::to_string(&results).map_err(SdkError::from)?;
                     Ok(ToolResult::Text(json))
                 }
@@ -121,6 +158,15 @@ pub async fn search(store: Store, prompt: String) -> Result<AgentSearchResult> {
         .await
         .context("failed to create Copilot session")?;
 
+    // Forward the SDK's session events into our progress sink so the UI
+    // can show "Thinking…" between tool calls. We only emit `Thinking`
+    // when the assistant turn starts and there are no tool calls in
+    // flight; the tool closure itself owns the "Searching…" / "Found N"
+    // messages because it has direct access to the params and counts.
+    let event_sub = session.subscribe();
+    let progress_for_events = progress.clone();
+    let event_task = tokio::spawn(forward_progress_events(event_sub, progress_for_events));
+
     let user_message = format!(
         "User asked: {prompt}\n\nUse the find_queries tool to look through their saved \
          Kusto queries (try multiple search terms if needed), pick up to {MAX_RESULT_IDS} \
@@ -139,6 +185,7 @@ pub async fn search(store: Store, prompt: String) -> Result<AgentSearchResult> {
 
     let _ = session.disconnect().await;
     let _ = client.stop().await;
+    event_task.abort();
 
     let event = final_event.ok_or_else(|| anyhow!("Copilot returned no assistant message"))?;
     let text = extract_assistant_text(&event)
@@ -153,6 +200,28 @@ pub async fn search(store: Store, prompt: String) -> Result<AgentSearchResult> {
         queries,
         assistant_message: text,
     })
+}
+
+/// Drains a session event subscription, emitting `Thinking` whenever the
+/// assistant starts a new turn that doesn't immediately hand off to a
+/// tool. Runs until the subscription closes (session disconnect) or the
+/// task is aborted.
+async fn forward_progress_events(
+    mut sub: github_copilot_sdk::subscription::EventSubscription,
+    progress: ProgressSink,
+) {
+    loop {
+        match sub.recv().await {
+            Ok(event) => {
+                if event.event_type == "assistant.turn_start" {
+                    progress(ProgressEvent::Thinking);
+                }
+            }
+            Err(RecvError::Lagged(_)) => continue,
+            Err(RecvError::Closed) => break,
+            Err(_) => break,
+        }
+    }
 }
 
 const SYSTEM_MESSAGE: &str = "You help the user search their saved Kusto/KQL queries. \
