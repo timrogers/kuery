@@ -14,10 +14,31 @@ use tauri_plugin_autostart::MacosLauncher;
 use tracing_subscriber::EnvFilter;
 
 fn show_main_window(app: &tauri::AppHandle) {
+    #[cfg(target_os = "macos")]
+    {
+        let _ = app.set_activation_policy(tauri::ActivationPolicy::Regular);
+    }
     if let Some(win) = app.get_webview_window("main") {
         let _ = win.show();
         let _ = win.unminimize();
         let _ = win.set_focus();
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn hide_main_window(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.hide();
+    }
+    // Drop back to Accessory so the Dock icon and app menu disappear and we
+    // become a tray-only background app again.
+    let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+}
+
+#[cfg(not(target_os = "macos"))]
+fn hide_main_window(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.hide();
     }
 }
 
@@ -41,15 +62,21 @@ pub fn run() {
             Some(vec!["--autostart"]),
         ))
         .setup(|app| {
-            // macOS: run as a tray-only "accessory" app — no Dock icon.
-            #[cfg(target_os = "macos")]
-            {
-                let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
-            }
-
             // If we were launched by the login-item agent, start hidden in
             // the tray rather than popping the window in the user's face.
+            // Otherwise, behave like a normal app on first launch — visible
+            // window with a Dock icon — and only drop to Accessory once the
+            // user explicitly hides/closes the window.
             let launched_at_login = std::env::args().any(|a| a == "--autostart");
+            #[cfg(target_os = "macos")]
+            {
+                let policy = if launched_at_login {
+                    tauri::ActivationPolicy::Accessory
+                } else {
+                    tauri::ActivationPolicy::Regular
+                };
+                let _ = app.set_activation_policy(policy);
+            }
             if launched_at_login {
                 if let Some(win) = app.get_webview_window("main") {
                     let _ = win.hide();
@@ -101,13 +128,14 @@ pub fn run() {
                 })
                 .build(app)?;
 
-            // Closing the window should hide it, not quit the app.
+            // Closing the window should hide it and drop the Dock icon, not
+            // quit the app.
             if let Some(win) = app.get_webview_window("main") {
-                let win_clone = win.clone();
+                let app_handle = app.handle().clone();
                 win.on_window_event(move |event| {
                     if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                         api.prevent_close();
-                        let _ = win_clone.hide();
+                        hide_main_window(&app_handle);
                     }
                 });
             }
