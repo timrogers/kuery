@@ -89,13 +89,16 @@ function App() {
     setSmartMode((on) => {
       const next = !on;
       // Reset transient smart-mode state so the user gets a clean slate
-      // both when entering smart mode and when bailing back to FTS.
+      // both when entering smart mode and when bailing back to FTS. The
+      // results list is cleared in both directions: entering smart mode
+      // would otherwise keep the previous FTS-filtered list visible
+      // (because the FTS refresh effect is paused while smart mode is
+      // on), and leaving smart mode would briefly show the agent's
+      // picks until the next FTS refresh lands.
       setSmartMessage(null);
       setSearch("");
-      if (!next) {
-        setQueries([]);
-        setSelectedId(null);
-      }
+      setQueries([]);
+      setSelectedId(null);
       return next;
     });
   }
