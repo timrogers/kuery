@@ -1,4 +1,9 @@
 // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
+#[cfg(not(target_os = "macos"))]
+compile_error!(
+    "Kuery is only supported on macOS. Linux and Windows builds are not maintained — see README."
+);
+
 mod agent;
 mod ai;
 mod api;

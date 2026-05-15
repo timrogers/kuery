@@ -96,10 +96,15 @@ Prerequisites:
 
 - **Node 20+** and **pnpm**
 - **Rust 1.80+** (stable)
-- The **Tauri 2 prerequisites** for your platform — see
-  [tauri.app/start/prerequisites](https://tauri.app/start/prerequisites/).
-  On macOS that's just Xcode command line tools; Linux needs the
-  `webkit2gtk` dev packages.
+- The **Tauri 2 prerequisites** for macOS — Xcode command line tools
+  (`xcode-select --install`) and a recent stable Rust toolchain.
+
+> **Platform support: macOS only.** Kuery is built and tested on macOS
+> and intentionally rejects builds on Linux and Windows (the Rust crate
+> has a `compile_error!` for non-macOS targets and the npm package
+> declares `"os": ["darwin"]`). The tray UX, autostart plumbing, and
+> file paths assume a Mac. Patches to broaden support are welcome but
+> won't be maintained by the author.
 
 Clone and install:
 
@@ -125,10 +130,9 @@ hot-reload the React UI and recompile the Rust backend on change.
 pnpm tauri build
 ```
 
-Bundles land in `src-tauri/target/release/bundle/` — a `.app` (and `.dmg`)
-on macOS, `.deb`/`.AppImage` on Linux, or `.msi`/`.exe` on Windows. Linux
-and Windows aren't tested yet but should work; macOS is the primary
-target.
+Bundles land in `src-tauri/target/release/bundle/` as a `.app` and a
+`.dmg`. macOS is the only supported target — see the platform-support
+note above.
 
 ### Install the optional shims
 
