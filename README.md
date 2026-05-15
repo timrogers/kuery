@@ -23,6 +23,57 @@ Copilot CLI plugin are thin shims that just forward queries over HTTP.
 - **Stays out of the way** — tray-only on macOS, optional start-at-login,
   and a window you can close without losing the background server.
 
+## Getting started
+
+> **macOS only.** Kuery is built and tested on macOS and intentionally
+> rejects builds on Linux and Windows. The tray UX, autostart, and file
+> paths assume a Mac.
+
+You'll need:
+
+- **Node 20+** and **pnpm**
+- **Rust 1.80+** (stable)
+- **Xcode command line tools** — `xcode-select --install`
+
+Clone, install, and run:
+
+```bash
+git clone https://github.com/timrogers/kuery.git
+cd kuery
+pnpm install
+pnpm tauri dev
+```
+
+The window opens and the local HTTP server binds to `127.0.0.1:47821` as
+soon as the app is up. The first build takes a few minutes; after that
+the React UI hot-reloads and the Rust backend recompiles on change.
+
+### Hook up the capture shims
+
+Out of the box, Kuery is a query browser with nothing to browse. The two
+shims are how queries actually land in the store:
+
+- **Chrome extension** — captures every query you run in the Azure Data
+  Explorer web UI. The welcome screen shows the path to the local
+  checkout with a copy button; load it as an unpacked extension in
+  `chrome://extensions`. Details in
+  [`chrome-extension/README.md`](chrome-extension/README.md).
+- **Copilot CLI plugin** — captures KQL run by Copilot CLI agents and
+  re-exposes your saved queries to them as MCP tools. Install with
+  `copilot plugin install timrogers/kuery:plugin` (or point it at your
+  local `plugin/` directory — see [`plugin/README.md`](plugin/README.md)).
+  The exact command, with a copy button, lives in **Settings → Copilot
+  CLI plugin**.
+
+### Build a release binary
+
+```bash
+pnpm tauri build
+```
+
+Bundles land in `src-tauri/target/release/bundle/` as a `.app` and a
+`.dmg`. Drag the `.app` into `/Applications` and you're done.
+
 ## Architecture
 
 ```mermaid
@@ -88,61 +139,6 @@ Available to any MCP client that can talk to a Streamable HTTP transport at
 - `get_query(id)`
 - `list_recent_queries(limit?)`
 - `list_starred_queries(limit?)`
-
-## Building from source
-
-Prerequisites:
-
-- **Node 20+** and **pnpm**
-- **Rust 1.80+** (stable)
-- The **Tauri 2 prerequisites** for macOS — Xcode command line tools
-  (`xcode-select --install`) and a recent stable Rust toolchain.
-
-> **Platform support: macOS only.** Kuery is built and tested on macOS
-> and intentionally rejects builds on Linux and Windows (the Rust crate
-> has a `compile_error!` for non-macOS targets and the npm package
-> declares `"os": ["darwin"]`). The tray UX, autostart plumbing, and
-> file paths assume a Mac. Patches to broaden support are welcome but
-> won't be maintained by the author.
-
-Clone and install:
-
-```bash
-git clone https://github.com/timrogers/kuery.git
-cd kuery
-pnpm install
-```
-
-### Run in development
-
-```bash
-pnpm tauri dev
-```
-
-The window opens and the HTTP server binds to `127.0.0.1:47821` as soon as
-the app is up. The first build takes a few minutes; subsequent runs
-hot-reload the React UI and recompile the Rust backend on change.
-
-### Build a release binary
-
-```bash
-pnpm tauri build
-```
-
-Bundles land in `src-tauri/target/release/bundle/` as a `.app` and a
-`.dmg`. macOS is the only supported target — see the platform-support
-note above.
-
-### Install the optional shims
-
-- **Chrome extension** for capturing Azure Data Explorer — see
-  [`chrome-extension/README.md`](chrome-extension/README.md). The path to
-  the local checkout is shown on the welcome screen with a copy button so
-  you can drop it straight into `chrome://extensions`.
-- **Copilot CLI plugin** — `copilot plugin install timrogers/kuery:plugin`
-  (or point it at your local `plugin/` directory; see
-  [`plugin/README.md`](plugin/README.md)). The exact install command,
-  with a copy button, also lives in **Settings → Copilot CLI plugin**.
 
 ## Debugging
 
