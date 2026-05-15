@@ -77,6 +77,20 @@ soon as the app is up. To install the optional pieces:
 - **Chrome extension** — see `chrome-extension/README.md`.
 - **Copilot CLI hook** — see `hooks/copilot-cli/README.md`.
 
+## Background mode
+
+Kuery is designed to run quietly in the background so the capture API and
+MCP server are always available.
+
+- On macOS the app runs as a tray-only "accessory" — there is **no Dock
+  icon**. Click the menu-bar icon to open the window or quit the app.
+- Closing the window just hides it; the server keeps running.
+- A **Start at login** option (in the first-run welcome flow and in
+  Settings) registers Kuery with the OS so it's running whenever you are.
+  When launched at login the window stays hidden until you open it from
+  the tray.
+- Running the app a second time just focuses the existing window.
+
 ## Importing legacy data
 
 Settings → Import database… and pick your old `kuery.sqlite`. Schemas are

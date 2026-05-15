@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { open as openDialog, save as saveDialog } from "@tauri-apps/plugin-dialog";
+import { enable, disable, isEnabled } from "@tauri-apps/plugin-autostart";
 import {
   exportDatabase,
   getSetting,
@@ -16,15 +17,33 @@ const TOKEN_KEY = "github_models_token";
 
 export function SettingsModal({ onClose, onChanged }: Props) {
   const [token, setToken] = useState("");
+  const [autostart, setAutostart] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
 
   useEffect(() => {
     getSetting(TOKEN_KEY).then((v) => setToken(v ?? ""));
+    isEnabled()
+      .then((v) => setAutostart(v))
+      .catch(() => {});
   }, []);
 
   async function saveToken() {
     await setSetting(TOKEN_KEY, token.trim() === "" ? null : token.trim());
     setStatus("Token saved.");
+  }
+
+  async function toggleAutostart(next: boolean) {
+    try {
+      if (next) {
+        await enable();
+      } else {
+        await disable();
+      }
+      setAutostart(next);
+      setStatus(next ? "Will start at login." : "Won't start at login.");
+    } catch (e) {
+      setStatus(`Couldn't update startup setting: ${e}`);
+    }
   }
 
   async function exportDb() {
@@ -78,6 +97,22 @@ export function SettingsModal({ onClose, onChanged }: Props) {
             />
             <button onClick={saveToken}>Save</button>
           </div>
+        </section>
+
+        <section>
+          <h3>Startup</h3>
+          <p className="hint">
+            Kuery only captures queries while it's running. Launching at login
+            keeps capture continuous across reboots.
+          </p>
+          <label className="filter-toggle">
+            <input
+              type="checkbox"
+              checked={autostart}
+              onChange={(e) => toggleAutostart(e.target.checked)}
+            />
+            Start Kuery when I log in
+          </label>
         </section>
 
         <section>

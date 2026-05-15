@@ -2,9 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import { QueryList } from "./components/QueryList";
 import { QueryDetail } from "./components/QueryDetail";
 import { SettingsModal } from "./components/SettingsModal";
+import { WelcomeModal } from "./components/WelcomeModal";
 import { useDebounced } from "./hooks";
 import {
   deleteQuery,
+  getSetting,
   searchQueries,
   updateQuery,
 } from "./api";
@@ -17,9 +19,16 @@ function App() {
   const [queries, setQueries] = useState<Query[]>([]);
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [showSettings, setShowSettings] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const debouncedSearch = useDebounced(search, 200);
+
+  useEffect(() => {
+    getSetting("welcome_completed")
+      .then((v) => setShowWelcome(v !== "1"))
+      .catch(() => {});
+  }, []);
 
   const reload = useCallback(async () => {
     try {
@@ -120,6 +129,8 @@ function App() {
           onChanged={reload}
         />
       )}
+
+      {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
     </div>
   );
 }

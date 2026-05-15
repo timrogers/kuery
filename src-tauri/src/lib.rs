@@ -5,8 +5,21 @@ mod ipc;
 mod mcp;
 mod store;
 
-use tauri::Manager;
+use tauri::{
+    menu::{Menu, MenuItem},
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
+    Manager,
+};
+use tauri_plugin_autostart::MacosLauncher;
 use tracing_subscriber::EnvFilter;
+
+fn show_main_window(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window("main") {
+        let _ = win.show();
+        let _ = win.unminimize();
+        let _ = win.set_focus();
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -17,9 +30,32 @@ pub fn run() {
         .try_init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_single_instance::init(|app, _argv, _cwd| {
+            // Re-launching the binary just brings the existing window forward.
+            show_main_window(app);
+        }))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_autostart::init(
+            MacosLauncher::LaunchAgent,
+            Some(vec!["--autostart"]),
+        ))
         .setup(|app| {
+            // macOS: run as a tray-only "accessory" app — no Dock icon.
+            #[cfg(target_os = "macos")]
+            {
+                let _ = app.set_activation_policy(tauri::ActivationPolicy::Accessory);
+            }
+
+            // If we were launched by the login-item agent, start hidden in
+            // the tray rather than popping the window in the user's face.
+            let launched_at_login = std::env::args().any(|a| a == "--autostart");
+            if launched_at_login {
+                if let Some(win) = app.get_webview_window("main") {
+                    let _ = win.hide();
+                }
+            }
+
             let data_dir = app
                 .path()
                 .app_data_dir()
@@ -36,6 +72,45 @@ pub fn run() {
                     tracing::error!("HTTP API server failed: {e:#}");
                 }
             });
+
+            // Tray icon — primary entry point now that we're Dock-less.
+            let open_item = MenuItem::with_id(app, "open", "Open Kuery", true, None::<&str>)?;
+            let quit_item = MenuItem::with_id(app, "quit", "Quit Kuery", true, None::<&str>)?;
+            let menu = Menu::with_items(app, &[&open_item, &quit_item])?;
+
+            let _tray = TrayIconBuilder::with_id("kuery-tray")
+                .icon(app.default_window_icon().unwrap().clone())
+                .icon_as_template(true)
+                .tooltip("Kuery")
+                .menu(&menu)
+                .show_menu_on_left_click(false)
+                .on_menu_event(|app, event| match event.id.as_ref() {
+                    "open" => show_main_window(app),
+                    "quit" => app.exit(0),
+                    _ => {}
+                })
+                .on_tray_icon_event(|tray, event| {
+                    if let TrayIconEvent::Click {
+                        button: MouseButton::Left,
+                        button_state: MouseButtonState::Up,
+                        ..
+                    } = event
+                    {
+                        show_main_window(tray.app_handle());
+                    }
+                })
+                .build(app)?;
+
+            // Closing the window should hide it, not quit the app.
+            if let Some(win) = app.get_webview_window("main") {
+                let win_clone = win.clone();
+                win.on_window_event(move |event| {
+                    if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                        api.prevent_close();
+                        let _ = win_clone.hide();
+                    }
+                });
+            }
 
             Ok(())
         })
