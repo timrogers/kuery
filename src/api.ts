@@ -105,3 +105,13 @@ export interface CopilotCliStatus {
 export async function copilotCliStatus(): Promise<CopilotCliStatus> {
   return invoke<CopilotCliStatus>("copilot_cli_status");
 }
+
+export async function exportQueriesCsv(
+  destPath: string,
+  clusterFilter?: string,
+): Promise<number> {
+  return invoke<number>("export_queries_csv", {
+    destPath,
+    clusterFilter: clusterFilter ?? null,
+  });
+}

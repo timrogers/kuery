@@ -412,6 +412,56 @@ impl Store {
         tx.commit()?;
         Ok(summary)
     }
+
+    /// Export all queries (or those matching a cluster filter) to a CSV file
+    /// at the given path. Returns the number of rows written.
+    pub fn export_queries_csv(&self, dest_path: &str, cluster_filter: Option<&str>) -> Result<usize> {
+        let conn = self.pool.get()?;
+
+        let sql = match cluster_filter {
+            Some(cluster) => format!(
+                "SELECT id, query_text, cluster, \"database\", source, first_seen_at, last_seen_at \
+                 FROM queries WHERE cluster = '{cluster}' ORDER BY last_seen_at DESC"
+            ),
+            None => "SELECT id, query_text, cluster, \"database\", source, first_seen_at, last_seen_at \
+                     FROM queries ORDER BY last_seen_at DESC"
+                .to_string(),
+        };
+
+        let mut stmt = conn.prepare(&sql)?;
+        let rows = stmt.query_map([], |row| {
+            Ok((
+                row.get::<_, i64>(0).unwrap(),
+                row.get::<_, String>(1).unwrap(),
+                row.get::<_, Option<String>>(2).unwrap(),
+                row.get::<_, Option<String>>(3).unwrap(),
+                row.get::<_, String>(4).unwrap(),
+                row.get::<_, String>(5).unwrap(),
+                row.get::<_, String>(6).unwrap(),
+            ))
+        })?;
+
+        let mut csv =
+            String::from("id,query_text,cluster,database,source,first_seen_at,last_seen_at\n");
+        let mut count = 0;
+        for row in rows {
+            let (id, query_text, cluster, database, source, first_seen, last_seen) = row.unwrap();
+            csv.push_str(&format!(
+                "{},{},{},{},{},{},{}\n",
+                id,
+                query_text,
+                cluster.unwrap_or_default(),
+                database.unwrap_or_default(),
+                source,
+                first_seen,
+                last_seen,
+            ));
+            count += 1;
+        }
+
+        std::fs::write(dest_path, csv)?;
+        Ok(count)
+    }
 }
 
 #[derive(Debug, Default, Clone, Serialize)]
