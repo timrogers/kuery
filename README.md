@@ -35,18 +35,23 @@ You'll need:
 - **Rust 1.80+** (stable)
 - **Xcode command line tools** — `xcode-select --install`
 
-Clone, install, and run:
+Clone the repo and build a real `.app` you can keep around:
 
 ```bash
 git clone https://github.com/timrogers/kuery.git
 cd kuery
 pnpm install
-pnpm tauri dev
+pnpm tauri build
 ```
 
-The window opens and the local HTTP server binds to `127.0.0.1:47821` as
-soon as the app is up. The first build takes a few minutes; after that
-the React UI hot-reloads and the Rust backend recompiles on change.
+The first build takes a few minutes (Rust + every Tauri dep). When it
+finishes, drag `src-tauri/target/release/bundle/macos/Kuery.app` into
+`/Applications` and launch it from Spotlight or Launchpad. There's also
+a `.dmg` in `src-tauri/target/release/bundle/dmg/` if you'd rather
+install that way.
+
+To pick up new releases later, `git pull` and run `pnpm install &&
+pnpm tauri build` again — overwrite the `.app` in `/Applications`.
 
 ### Hook up the capture shims
 
@@ -56,14 +61,17 @@ UI) and the Copilot CLI plugin (for capturing queries from agents) —
 copy-pasteable commands and paths included. You can revisit either set
 of instructions any time from **Settings**.
 
-### Build a release binary
+### Hacking on Kuery
+
+If you want to make changes, run the dev build instead:
 
 ```bash
-pnpm tauri build
+pnpm tauri dev
 ```
 
-Bundles land in `src-tauri/target/release/bundle/` as a `.app` and a
-`.dmg`. Drag the `.app` into `/Applications` and you're done.
+The React UI hot-reloads and the Rust backend recompiles on save. See
+[`AGENTS.md`](AGENTS.md) for repo layout, conventions, and the lint /
+test commands CI runs.
 
 ## Architecture
 
