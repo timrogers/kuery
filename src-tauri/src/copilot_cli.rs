@@ -79,7 +79,11 @@ pub async fn check() -> CopilotCliStatus {
             error: Some(format!(
                 "`copilot --version` exited with {}: {}",
                 output.status,
-                if stderr.is_empty() { "(no output)" } else { &stderr }
+                if stderr.is_empty() {
+                    "(no output)"
+                } else {
+                    &stderr
+                }
             )),
         };
     }
