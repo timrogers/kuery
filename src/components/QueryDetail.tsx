@@ -168,7 +168,7 @@ export function QueryDetail({ query, onUpdate, onDelete }: Props) {
             title={
               canCopyUrl
                 ? "Copy an Azure Data Explorer share URL that opens this query"
-                : "Cluster and database are required to build an ADX URL"
+                : "Cluster and database are required to build an Azure Data Explorer URL"
             }
           >
             Copy Azure Data Explorer URL

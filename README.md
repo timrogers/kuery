@@ -1,21 +1,19 @@
 # Kuery
 
-A small desktop app that watches the Kusto queries you run — in
+A small macOS app that watches the Kusto queries you run — in
 [Azure Data Explorer](https://dataexplorer.azure.com/) and from AI agents
 that talk to a Kusto MCP server — and saves them locally so you can search
 them, star the good ones, and feed them back to the next agent.
 
-Built with Rust and Tauri 2. This is the rewrite of the original
-[`kuery-legacy`](https://github.com/timrogers/kuery) Chrome extension —
-storage, search, UI, AI summaries, and the MCP server now all live in one
-native process. The browser extension and the Copilot CLI plugin are thin
-shims that just forward queries over HTTP.
+Built with Rust and Tauri 2. Storage, search, UI, AI summaries, and the
+MCP server all live in one native process. The browser extension and the
+Copilot CLI plugin are thin shims that just forward queries over HTTP.
 
 ## Highlights
 
-- **Captures everything you run** — from the ADX web UI (via a Chrome
-  extension) and from agents using a Kusto MCP server (via a Copilot CLI
-  plugin).
+- **Captures everything you run** — from the Azure Data Explorer web UI
+  (via a Chrome extension) and from agents using a Kusto MCP server (via
+  a Copilot CLI plugin).
 - **Searches everything you've ever run** — SQLite + FTS5 full-text search
   across the query, cluster, database, and an auto-generated description.
 - **Smart search** with the GitHub Copilot CLI: ask in plain English ("the
@@ -29,7 +27,7 @@ shims that just forward queries over HTTP.
 
 ```mermaid
 flowchart LR
-    ADX[ADX web UI]
+    ADX[Azure Data Explorer web UI]
     CLI[Copilot CLI / agents]
     EXT[Chrome extension]
     PLG[Copilot CLI plugin]
@@ -60,7 +58,8 @@ flowchart LR
   (✨ toggle) that hands a natural-language prompt to the GitHub Copilot
   CLI and returns matching saved queries.
 - **Chrome capture shim** (`chrome-extension/`): MV3 extension that
-  intercepts ADX query requests and POSTs them to the local app.
+  intercepts Azure Data Explorer query requests and POSTs them to the
+  local app.
 - **Copilot CLI plugin** (`plugin/`): one-line install (`copilot plugin
   install timrogers/kuery:plugin`). Captures KQL run by the agent via a
   Kusto MCP server, and exposes the local Kuery MCP server (search,
@@ -136,7 +135,7 @@ note above.
 
 ### Install the optional shims
 
-- **Chrome extension** for capturing ADX — see
+- **Chrome extension** for capturing Azure Data Explorer — see
   [`chrome-extension/README.md`](chrome-extension/README.md). The path to
   the local checkout is shown on the welcome screen with a copy button so
   you can drop it straight into `chrome://extensions`.
